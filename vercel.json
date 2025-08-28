@@ -19,14 +19,6 @@
       "dest": "/index.html"
     }
   ],
-  "functions": {
-    "api/network/local-ip.js": {
-      "maxDuration": 10
-    },
-    "api/status.js": {
-      "maxDuration": 10
-    }
-  },
   "env": {
     "NODE_ENV": "production"
   }
