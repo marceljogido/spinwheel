@@ -195,24 +195,30 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
     const updateWheelSize = () => {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
-      
-      // Use more conservative sizing to prevent overflow
+
+      // Tentukan ukuran berbasis lebar (seperti sebelumnya)
+      let sizeFromWidth: number;
       if (screenWidth < 480) {
-        // Mobile: 60% of viewport width, max 250px
-        setWheelSize(Math.min(screenWidth * 0.6, 250));
+        sizeFromWidth = Math.min(screenWidth * 0.6, 250);
       } else if (screenWidth < 640) {
-        // Small tablet: 50% of viewport width, max 280px
-        setWheelSize(Math.min(screenWidth * 0.5, 280));
+        sizeFromWidth = Math.min(screenWidth * 0.5, 280);
       } else if (screenWidth < 768) {
-        // Tablet: 45% of viewport width, max 320px
-        setWheelSize(Math.min(screenWidth * 0.45, 320));
+        sizeFromWidth = Math.min(screenWidth * 0.45, 320);
       } else if (screenWidth < 1024) {
-        // Small desktop: 35% of viewport width, max 380px
-        setWheelSize(Math.min(screenWidth * 0.35, 380));
+        sizeFromWidth = Math.min(screenWidth * 0.35, 380);
       } else {
-        // Large desktop: 30% of viewport width, max 400px
-        setWheelSize(Math.min(screenWidth * 0.3, 400));
+        sizeFromWidth = Math.min(screenWidth * 0.3, 400);
       }
+
+      // Batasi juga terhadap tinggi agar tidak melebihi 50vh
+      const sizeFromHeight = screenHeight * 0.5;
+
+      // Batasi terhadap lebar max container (90vw)
+      const sizeFromViewportWidth = screenWidth * 0.9;
+
+      // Ambil nilai minimum agar width === height dan tidak ter-clamp berbeda
+      const finalSize = Math.min(sizeFromWidth, sizeFromHeight, sizeFromViewportWidth);
+      setWheelSize(finalSize);
     };
 
     updateWheelSize();
@@ -402,16 +408,12 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
       
       createEnhancedConfetti();
       setPopupPrize(winningPrize);
-      
-      // Play win sound
-      const winAudio = new Audio();
-      winAudio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
-      winAudio.volume = 0.7;
-      winAudio.play().catch(console.error);
     }, spinDuration * 1000);
   };
 
   const segmentAngle = 360 / allSegments.length;
+  const segmentCount = allSegments.length;
+  const fontScale = segmentCount >= 16 ? 0.03 : segmentCount >= 12 ? 0.035 : 0.04;
 
   return (
     <div className={`flex flex-col items-center space-y-2 sm:space-y-3 md:space-y-4 w-full max-w-4xl mx-auto px-1 sm:px-2 ${isShaking ? 'animate-screen-shake' : ''}`}>
@@ -456,59 +458,59 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
                 }}
               >
                 <div 
-                  className={`text-center transform -rotate-90 flex flex-col items-center transition-all duration-300 ${
-                    isAvailable ? 'opacity-100' : 'opacity-50'
-                  } ${isSpinning ? 'animate-pulse' : ''} ${
-                    isWinningPrize && config.showGlow ? 'animate-prize-glow' : ''
-                  } ${isWinningPrize ? 'animate-prize-float' : ''}`}
+                  className={`text-center transform flex flex-col items-center transition-all duration-300 ${
+                    isAvailable ? 'opacity-100' : 'opacity-60 saturate-50'
+                  } ${isSpinning ? 'animate-pulse' : ''}`}
                   style={{ 
-                    marginTop: prize.image ? 'calc(-50% + 60px)' : 'calc(-50% + 40px)',
-                    transform: 'translateY(-50%)'
+                    // Jauhkan lagi ke tepi roda
+                    marginTop: prize.image 
+                      ? `calc(-50% + ${Math.max(wheelSize * 0.03, 8)}px)` 
+                      : `calc(-50% + ${Math.max(wheelSize * 0.02, 6)}px)`,
+                    transform: 'translateY(-50%) rotate(90deg)'
                   }}
                 >
-                  {/* Prize Image - Only show if admin uploaded */}
-                  {prize.image && config.showImages && (
-                    <div className="mb-2 transform hover:scale-110 transition-transform duration-200">
-                      <img 
-                        src={prize.image} 
-                        alt={prize.name}
-                        className="object-cover rounded-full border-2 border-white shadow-lg"
-                        style={{
-                          width: `${Math.max(wheelSize * 0.12, 24)}px`,
-                          height: `${Math.max(wheelSize * 0.12, 24)}px`
-                        }}
-                      />
-                    </div>
-                  )}
-                  
-                  {/* Prize Text */}
+                  {/* Prize Label Row: image on the left, text on the right */}
                   {config.showLabels && (
-                    <div 
-                      className="text-white font-bold drop-shadow-lg px-1 text-center leading-tight"
+                    <div className="flex items-center justify-start gap-1 w-full"
                       style={{
-                        fontSize: `${Math.max(wheelSize * 0.04, 12)}px`,
-                        maxWidth: `${wheelSize * 0.25}px`,
-                        lineHeight: '1.1',
-                        minHeight: `${Math.max(wheelSize * 0.08, 20)}px`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
+                        width: `${wheelSize * 0.32}px`,
+                        transformOrigin: 'left center'
                       }}
                     >
-                      {prize.name}
+                      {prize.image && config.showImages && (
+                        <img 
+                          src={prize.image} 
+                          alt={prize.name}
+                          className={`object-cover rounded-full border-2 shadow-lg ${isAvailable ? 'border-white' : 'border-border'}`}
+                          style={{
+                            width: `${Math.max(wheelSize * 0.10, 18)}px`,
+                            height: `${Math.max(wheelSize * 0.10, 18)}px`
+                          }}
+                        />
+                      )}
+                      <div 
+                        className={`font-bold drop-shadow-lg px-1 leading-tight text-left ${isAvailable ? 'text-white' : 'text-muted-foreground'}`}
+                        style={{
+                          fontSize: `${Math.max(wheelSize * fontScale, 10)}px`,
+                          maxWidth: `${wheelSize * 0.30}px`,
+                          lineHeight: '1',
+                          minHeight: `${Math.max(wheelSize * 0.08, 20)}px`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-start',
+                          fontWeight: 800,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                        title={prize.name}
+                      >
+                        {prize.name}
+                      </div>
                     </div>
                   )}
                   
-                  {!isAvailable && !isDummy && (
-                    <div 
-                      className="text-red-200 font-semibold mt-1 bg-red-600/20 px-2 py-1 rounded-full backdrop-blur-sm"
-                      style={{
-                        fontSize: `${Math.max(wheelSize * 0.025, 8)}px`
-                      }}
-                    >
-                      SOLD OUT
-                    </div>
-                  )}
+                  {/* Empty state styling: no icon/text to save space */}
                 </div>
               </div>
             );
@@ -525,8 +527,8 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: `${Math.max(wheelSize * 0.25, 48)}px`,
-            height: `${Math.max(wheelSize * 0.25, 48)}px`
+            width: `${Math.max(wheelSize * 0.20, 44)}px`,
+            height: `${Math.max(wheelSize * 0.20, 44)}px`
           }}
         >
           {/* Animated background effect */}
@@ -536,8 +538,8 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
           <div 
             className="absolute border-2 border-yellow-200/50 rounded-full"
             style={{
-              width: `${Math.max(wheelSize * 0.15, 24)}px`,
-              height: `${Math.max(wheelSize * 0.15, 24)}px`,
+              width: `${Math.max(wheelSize * 0.12, 22)}px`,
+              height: `${Math.max(wheelSize * 0.12, 22)}px`,
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)'
@@ -549,7 +551,7 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
             <span 
               className="font-bold text-yellow-900 group-hover:text-yellow-800 transition-colors duration-300 drop-shadow-sm text-center whitespace-nowrap"
               style={{
-                fontSize: `${Math.max(wheelSize * 0.06, 10)}px`,
+                fontSize: `${Math.max(wheelSize * 0.05, 10)}px`,
                 lineHeight: '1',
                 maxWidth: `${wheelSize * 0.18}px`,
                 overflow: 'hidden',
@@ -589,15 +591,16 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
           </div>
         </button>
         
-        {/* Enhanced Pointer */}
+        {/* Enhanced Pointer with glow, micro-bounce, and LED tip */}
         <div className="absolute -top-1 sm:-top-2 md:-top-3 left-1/2 -translate-x-1/2 z-10">
-          <div className="relative">
+          <div className={`relative ${showBounce ? 'animate-bounce' : ''}`}>
             <div 
-              className="w-0 h-0 border-l-transparent border-r-transparent border-b-yellow-400 shadow-2xl drop-shadow-lg"
+              className="w-0 h-0 border-l-transparent border-r-transparent border-b-yellow-400"
               style={{
                 borderLeftWidth: `${Math.max(wheelSize * 0.02, 8)}px`,
                 borderRightWidth: `${Math.max(wheelSize * 0.02, 8)}px`,
-                borderBottomWidth: `${Math.max(wheelSize * 0.04, 16)}px`
+                borderBottomWidth: `${Math.max(wheelSize * 0.04, 16)}px`,
+                filter: 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.75)) drop-shadow(0 4px 6px rgba(0,0,0,0.25))'
               }}
             ></div>
             <div 
@@ -605,7 +608,20 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
               style={{
                 borderLeftWidth: `${Math.max(wheelSize * 0.01, 4)}px`,
                 borderRightWidth: `${Math.max(wheelSize * 0.01, 4)}px`,
-                borderBottomWidth: `${Math.max(wheelSize * 0.02, 8)}px`
+                borderBottomWidth: `${Math.max(wheelSize * 0.02, 8)}px`,
+                filter: 'drop-shadow(0 0 6px rgba(255, 255, 200, 0.7))'
+              }}
+            ></div>
+            {/* LED tip */}
+            <div
+              className={`absolute rounded-full bg-yellow-300 ${isSpinning ? 'animate-pulse' : ''}`}
+              style={{
+                left: '50%',
+                top: `${Math.max(wheelSize * 0.04, 16)}px`,
+                transform: 'translateX(-50%)',
+                width: `${Math.max(wheelSize * 0.02, 6)}px`,
+                height: `${Math.max(wheelSize * 0.02, 6)}px`,
+                boxShadow: '0 0 10px rgba(255, 223, 0, 0.9), 0 0 20px rgba(255, 223, 0, 0.6)'
               }}
             ></div>
           </div>

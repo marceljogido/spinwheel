@@ -334,7 +334,6 @@ export const AdminPanel = ({ prizes, onPrizesUpdate, totalSpins, wheelConfig, on
             }}
             className="text-xs"
           >
-            Casino Style (50/20/15/10/5)
           </Button>
         </div>
       </div>
