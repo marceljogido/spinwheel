@@ -9,8 +9,10 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "vercel-build": "npm run build",
-    "postinstall": "node -e \"try { require('fs').existsSync('node_modules/@rollup/rollup-linux-x64-gnu') || console.log('Rollup optional dependency not found, continuing...') } catch(e) { console.log('Rollup check failed, continuing...') }\""
+    "deploy": "node scripts/deploy.js",
+    "deploy:vercel": "vercel --prod",
+    "deploy:netlify": "netlify deploy --prod --dir=dist",
+    "deploy:github": "npm run build && touch dist/.nojekyll"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -62,16 +64,6 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.3",
     "zod": "^3.23.8"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "overrides": {
-    "rollup": {
-      "optionalDependencies": {
-        "@rollup/rollup-linux-x64-gnu": "4.9.5"
-      }
-    }
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

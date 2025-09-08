@@ -33,28 +33,32 @@ export const AudioManager = ({ onSpinStart, onWin }: AudioManagerProps) => {
 
   // Initialize audio elements
   useEffect(() => {
-    // Create audio elements
-    spinAudioRef.current = new Audio();
-    winAudioRef.current = new Audio();
-    bgmAudioRef.current = new Audio();
+    try {
+      // Create audio elements
+      spinAudioRef.current = new Audio();
+      winAudioRef.current = new Audio();
+      bgmAudioRef.current = new Audio();
 
-    // Set audio sources (placeholder URLs - bisa diganti nanti)
-    if (spinAudioRef.current) {
-      spinAudioRef.current.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
-      spinAudioRef.current.volume = masterVolume;
-      spinAudioRef.current.loop = false;
-    }
+      // Set audio properties
+      if (spinAudioRef.current) {
+        spinAudioRef.current.volume = masterVolume;
+        spinAudioRef.current.loop = false;
+        spinAudioRef.current.preload = 'none';
+      }
 
-    if (winAudioRef.current) {
-      winAudioRef.current.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
-      winAudioRef.current.volume = masterVolume;
-      winAudioRef.current.loop = false;
-    }
+      if (winAudioRef.current) {
+        winAudioRef.current.volume = masterVolume;
+        winAudioRef.current.loop = false;
+        winAudioRef.current.preload = 'none';
+      }
 
-    if (bgmAudioRef.current) {
-      bgmAudioRef.current.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
-      bgmAudioRef.current.volume = bgmVolume;
-      bgmAudioRef.current.loop = true;
+      if (bgmAudioRef.current) {
+        bgmAudioRef.current.volume = bgmVolume;
+        bgmAudioRef.current.loop = true;
+        bgmAudioRef.current.preload = 'none';
+      }
+    } catch (error) {
+      console.warn('Audio initialization failed:', error);
     }
 
     // Cleanup
@@ -80,31 +84,49 @@ export const AudioManager = ({ onSpinStart, onWin }: AudioManagerProps) => {
 
   // Play spin sound
   const playSpinSound = () => {
-    if (spinAudioRef.current && !isMuted) {
-      spinAudioRef.current.currentTime = 0;
-      spinAudioRef.current.play().catch(console.error);
+    if (!isMuted) {
+      try {
+        const audio = new Audio('/sounds/spin.mp3');
+        audio.volume = masterVolume;
+        audio.play().catch(console.error);
+      } catch (error) {
+        console.warn('Spin sound error:', error);
+      }
     }
     onSpinStart?.();
   };
 
   // Play win sound
   const playWinSound = () => {
-    if (winAudioRef.current && !isMuted) {
-      winAudioRef.current.currentTime = 0;
-      winAudioRef.current.play().catch(console.error);
+    if (!isMuted) {
+      try {
+        const audio = new Audio('/sounds/win.mp3');
+        audio.volume = masterVolume;
+        audio.play().catch(console.error);
+      } catch (error) {
+        console.warn('Win sound error:', error);
+      }
     }
     onWin?.();
   };
 
   // Toggle BGM
   const toggleBGM = () => {
-    if (bgmAudioRef.current) {
-      if (isBgmPlaying) {
+    if (isBgmPlaying) {
+      if (bgmAudioRef.current) {
         bgmAudioRef.current.pause();
-        setIsBgmPlaying(false);
-      } else {
-        bgmAudioRef.current.play().catch(console.error);
+      }
+      setIsBgmPlaying(false);
+    } else {
+      try {
+        const audio = new Audio('/sounds/bgm.mp3');
+        audio.volume = bgmVolume;
+        audio.loop = true;
+        audio.play().catch(console.error);
+        bgmAudioRef.current = audio;
         setIsBgmPlaying(true);
+      } catch (error) {
+        console.warn('BGM error:', error);
       }
     }
   };
@@ -124,96 +146,166 @@ export const AudioManager = ({ onSpinStart, onWin }: AudioManagerProps) => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      {/* Main Audio Controls */}
-      <div className="flex items-center gap-2 mb-2">
+    <div className="space-y-6">
+      {/* Audio Controls */}
+      <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
         <Button
           variant="outline"
           size="sm"
           onClick={toggleMute}
-          className="bg-background/80 backdrop-blur-sm border-border"
+          className="flex items-center gap-2"
         >
           {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          {isMuted ? 'Unmute' : 'Mute'}
         </Button>
         
         <Button
           variant="outline"
           size="sm"
           onClick={toggleBGM}
-          className="bg-background/80 backdrop-blur-sm border-border"
+          className="flex items-center gap-2"
         >
           {isBgmPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowSettings(!showSettings)}
-          className="bg-background/80 backdrop-blur-sm border-border"
-        >
-          <Settings className="w-4 h-4" />
+          {isBgmPlaying ? 'Stop BGM' : 'Play BGM'}
         </Button>
       </div>
 
-      {/* Audio Settings Panel */}
-      {showSettings && (
-        <Card className="p-4 bg-background/90 backdrop-blur-sm border-border min-w-[280px]">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Master Volume</Label>
-              <span className="text-xs text-muted-foreground">
-                {Math.round(masterVolume * 100)}%
-              </span>
-            </div>
-            <Slider
-              value={[masterVolume]}
-              onValueChange={(value) => setMasterVolume(value[0])}
-              max={1}
-              min={0}
-              step={0.1}
-              className="w-full"
-            />
-
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">BGM Volume</Label>
-              <span className="text-xs text-muted-foreground">
-                {Math.round(bgmVolume * 100)}%
-              </span>
-            </div>
-            <Slider
-              value={[bgmVolume]}
-              onValueChange={(value) => setBgmVolume(value[0])}
-              max={1}
-              min={0}
-              step={0.1}
-              className="w-full"
-            />
-
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Sound Effects</Label>
-              <Switch
-                checked={!isMuted}
-                onCheckedChange={setIsMuted}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Background Music</Label>
-              <Switch
-                checked={isBgmPlaying}
-                onCheckedChange={toggleBGM}
-              />
-            </div>
-
-            <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-              <p>💡 Tips: Upload file audio sendiri di folder public/sounds/</p>
-              <p>• spin.mp3 - untuk suara roda berputar</p>
-              <p>• win.mp3 - untuk suara menang</p>
-              <p>• bgm.mp3 - untuk background music</p>
-            </div>
+      {/* Audio Settings */}
+      <div className="space-y-6">
+        {/* Master Volume */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <Volume2 className="w-4 h-4" />
+              Master Volume
+            </Label>
+            <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
+              {Math.round(masterVolume * 100)}%
+            </span>
           </div>
-        </Card>
-      )}
+          <Slider
+            value={[masterVolume]}
+            onValueChange={(value) => setMasterVolume(value[0])}
+            max={1}
+            min={0}
+            step={0.1}
+            className="w-full"
+          />
+        </div>
+
+        {/* BGM Volume */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <Music className="w-4 h-4" />
+              Background Music Volume
+            </Label>
+            <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
+              {Math.round(bgmVolume * 100)}%
+            </span>
+          </div>
+          <Slider
+            value={[bgmVolume]}
+            onValueChange={(value) => setBgmVolume(value[0])}
+            max={1}
+            min={0}
+            step={0.1}
+            className="w-full"
+          />
+        </div>
+
+        {/* Sound Effects Toggle */}
+        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+          <div className="space-y-1">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <Music2 className="w-4 h-4" />
+              Sound Effects
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Suara saat spin dan menang hadiah
+            </p>
+          </div>
+          <Switch
+            checked={!isMuted}
+            onCheckedChange={setIsMuted}
+          />
+        </div>
+
+        {/* Background Music Toggle */}
+        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+          <div className="space-y-1">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <Music className="w-4 h-4" />
+              Background Music
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Musik latar belakang yang berulang
+            </p>
+          </div>
+          <Switch
+            checked={isBgmPlaying}
+            onCheckedChange={toggleBGM}
+          />
+        </div>
+
+        {/* Test Audio Buttons */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium">Test Audio</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const audio = new Audio('/sounds/spin.mp3');
+                audio.volume = masterVolume;
+                audio.play().catch(console.error);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Play className="w-3 h-3" />
+              Test Spin
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const audio = new Audio('/sounds/win.mp3');
+                audio.volume = masterVolume;
+                audio.play().catch(console.error);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Play className="w-3 h-3" />
+              Test Win
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const audio = new Audio('/sounds/bgm.mp3');
+                audio.volume = bgmVolume;
+                audio.play().catch(console.error);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Play className="w-3 h-3" />
+              Test BGM
+            </Button>
+          </div>
+        </div>
+
+        {/* Tips */}
+        <div className="text-xs text-muted-foreground p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <p className="font-medium text-blue-700 dark:text-blue-300 mb-2">💡 Tips Penggunaan Audio:</p>
+          <ul className="space-y-1 text-blue-600 dark:text-blue-400">
+            <li>• Upload file audio di folder <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">public/sounds/</code></li>
+            <li>• <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">spin.mp3</code> - untuk suara roda berputar</li>
+            <li>• <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">win.mp3</code> - untuk suara menang hadiah</li>
+            <li>• <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">bgm.mp3</code> - untuk background music</li>
+            <li>• Format yang didukung: MP3, WAV, OGG</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 };

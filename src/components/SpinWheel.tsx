@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AudioManager } from './AudioManager';
 
 interface Prize {
   id: string;
@@ -11,6 +10,7 @@ interface Prize {
   quota: number;
   won: number;
   image?: string;
+  winPercentage: number; // Persentase kemungkinan menang (0-100)
 }
 
 interface WheelConfig {
@@ -115,6 +115,67 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
   const [wheelSize, setWheelSize] = useState(340);
   const wheelRef = useRef<HTMLDivElement>(null);
 
+  // Audio refs
+  const spinAudioRef = useRef<HTMLAudioElement | null>(null);
+  const winAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize audio
+  useEffect(() => {
+    try {
+      // Create audio elements without setting src immediately
+      spinAudioRef.current = new Audio();
+      winAudioRef.current = new Audio();
+      
+      // Set audio properties
+      if (spinAudioRef.current) {
+        spinAudioRef.current.preload = 'none';
+        spinAudioRef.current.volume = 0.7;
+        spinAudioRef.current.crossOrigin = 'anonymous';
+      }
+      if (winAudioRef.current) {
+        winAudioRef.current.preload = 'none';
+        winAudioRef.current.volume = 0.7;
+        winAudioRef.current.crossOrigin = 'anonymous';
+      }
+    } catch (error) {
+      console.warn('Audio initialization failed:', error);
+    }
+    
+    return () => {
+      if (spinAudioRef.current) spinAudioRef.current.pause();
+      if (winAudioRef.current) winAudioRef.current.pause();
+    };
+  }, []);
+
+  // Audio functions
+  const playSpinSound = () => {
+    try {
+      // Create new audio instance each time to avoid download issues
+      const audio = new Audio();
+      audio.src = '/sounds/spin.mp3';
+      audio.volume = 0.7;
+      audio.play().catch((error) => {
+        console.warn('Spin audio play failed:', error);
+      });
+    } catch (error) {
+      console.warn('Spin sound error:', error);
+    }
+  };
+
+  const playWinSound = () => {
+    try {
+      // Create new audio instance each time to avoid download issues
+      const audio = new Audio();
+      audio.src = '/sounds/win.mp3';
+      audio.volume = 0.7;
+      audio.play().catch((error) => {
+        console.warn('Win audio play failed:', error);
+      });
+    } catch (error) {
+      console.warn('Win sound error:', error);
+    }
+  };
+
   // Default config jika tidak ada
   const config = wheelConfig || {
     centerText: 'SPIN!',
@@ -129,18 +190,28 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
     dummySegments: 0,
   };
 
-  // Responsive wheel size
+  // Responsive wheel size using flexible units
   useEffect(() => {
     const updateWheelSize = () => {
       const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+      
+      // Use more conservative sizing to prevent overflow
       if (screenWidth < 480) {
-        setWheelSize(250);
+        // Mobile: 60% of viewport width, max 250px
+        setWheelSize(Math.min(screenWidth * 0.6, 250));
       } else if (screenWidth < 640) {
-        setWheelSize(280);
+        // Small tablet: 50% of viewport width, max 280px
+        setWheelSize(Math.min(screenWidth * 0.5, 280));
       } else if (screenWidth < 768) {
-        setWheelSize(320);
+        // Tablet: 45% of viewport width, max 320px
+        setWheelSize(Math.min(screenWidth * 0.45, 320));
+      } else if (screenWidth < 1024) {
+        // Small desktop: 35% of viewport width, max 380px
+        setWheelSize(Math.min(screenWidth * 0.35, 380));
       } else {
-        setWheelSize(config.wheelSize);
+        // Large desktop: 30% of viewport width, max 400px
+        setWheelSize(Math.min(screenWidth * 0.3, 400));
       }
     };
 
@@ -234,10 +305,7 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
     }
     
     // Play spin sound
-    const spinAudio = new Audio();
-    spinAudio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
-    spinAudio.volume = 0.5;
-    spinAudio.play().catch(console.error);
+    playSpinSound();
     
     // Random spin duration between 4-6 seconds for more excitement
     const spinDuration = 4 + Math.random() * 2;
@@ -246,8 +314,33 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
     const spins = 10 + Math.random() * 5;
     const finalRotation = currentRotation + (spins * 360);
     
-    // Select winning prize
-    const winningPrize = availablePrizes[Math.floor(Math.random() * availablePrizes.length)];
+    // Select winning prize based on percentage
+    const selectWinningPrize = (prizes: Prize[]) => {
+      // Calculate total percentage of available prizes
+      const totalPercentage = prizes.reduce((sum, prize) => sum + prize.winPercentage, 0);
+      
+      if (totalPercentage === 0) {
+        // Fallback to random selection if no percentages set
+        return prizes[Math.floor(Math.random() * prizes.length)];
+      }
+      
+      // Generate random number between 0 and total percentage
+      const random = Math.random() * totalPercentage;
+      let currentPercentage = 0;
+      
+      // Find the prize based on percentage ranges
+      for (const prize of prizes) {
+        currentPercentage += prize.winPercentage;
+        if (random <= currentPercentage) {
+          return prize;
+        }
+      }
+      
+      // Fallback to last prize if something goes wrong
+      return prizes[prizes.length - 1];
+    };
+    
+    const winningPrize = selectWinningPrize(availablePrizes);
     
     // Calculate exact position for the winning prize
     const segmentAngle = 360 / allSegments.length;
@@ -279,6 +372,10 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
     setTimeout(() => {
       setIsSpinning(false);
       setWinningPrize(winningPrize);
+      
+      // Play win sound
+      playWinSound();
+      
       onPrizeWon(winningPrize);
       
       // Show bounce effect
@@ -301,26 +398,28 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
   const segmentAngle = 360 / allSegments.length;
 
   return (
-    <div className={`flex flex-col items-center space-y-6 md:space-y-8 w-full max-w-4xl mx-auto px-4 ${isShaking ? 'animate-screen-shake' : ''}`}>
+    <div className={`flex flex-col items-center space-y-2 sm:space-y-3 md:space-y-4 w-full max-w-4xl mx-auto px-1 sm:px-2 ${isShaking ? 'animate-screen-shake' : ''}`}>
       {/* Wheel Container */}
-      <div className="relative wheel-responsive" style={{ 
+      <div className="relative mx-auto" style={{ 
         width: wheelSize, 
-        height: wheelSize
+        height: wheelSize,
+        maxWidth: '90vw',
+        maxHeight: '50vh'
       }}>
         {/* Outer Glow Effect */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 blur-xl animate-pulse"></div>
+        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400/30 via-yellow-500/20 to-yellow-400/30 blur-2xl animate-pulse"></div>
         
         {/* Wheel with 3D effects and bounce */}
         <div 
           ref={wheelRef}
-          className={`relative w-full h-full rounded-full border-8 border-primary shadow-carnival overflow-hidden transform transition-all duration-300 hover:scale-105 wheel-3d wheel-3d-hover ${
+          className={`relative w-full h-full rounded-full border-8 border-yellow-400 shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-105 wheel-3d wheel-3d-hover ${
             showBounce ? 'animate-wheel-bounce-stop' : ''
           }`}
           style={{ 
             background: `conic-gradient(${allSegments.map((prize, index) => 
               `${prize.color} ${index * segmentAngle}deg ${(index + 1) * segmentAngle}deg`
             ).join(', ')})`,
-            boxShadow: '0 0 50px rgba(255, 215, 0, 0.3), 0 10px 40px -10px rgba(255, 215, 0, 0.3)'
+            boxShadow: '0 0 60px rgba(255, 215, 0, 0.5), 0 15px 50px -10px rgba(255, 215, 0, 0.4), inset 0 0 20px rgba(255, 215, 0, 0.2)'
           }}
         >
           {/* Prize Segments */}
@@ -330,17 +429,6 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
             const isWinningPrize = winningPrize?.id === prize.id;
             const isDummy = prize.id.startsWith('dummy-');
             
-            // Get appropriate icon for each prize
-            const getPrizeIcon = (prizeName: string) => {
-              const name = prizeName.toLowerCase();
-              if (name.includes('coffee')) return '☕';
-              if (name.includes('discount') || name.includes('%')) return '💰';
-              if (name.includes('shirt') || name.includes('t-shirt')) return '👕';
-              if (name.includes('gift') || name.includes('card')) return '🎁';
-              if (name.includes('vip') || name.includes('access')) return '👑';
-              if (name.includes('try again') || name.includes('zonk')) return '🔄';
-              return '🎯'; // default icon
-            };
             
             return (
               <div
@@ -362,32 +450,46 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
                     transform: 'translateY(-50%)'
                   }}
                 >
-                  {/* Prize Image or Icon */}
-                  {prize.image && config.showImages ? (
+                  {/* Prize Image - Only show if admin uploaded */}
+                  {prize.image && config.showImages && (
                     <div className="mb-2 transform hover:scale-110 transition-transform duration-200">
                       <img 
                         src={prize.image} 
                         alt={prize.name}
-                        className="w-8 h-8 sm:w-12 sm:h-12 md:w-16 md:h-16 object-cover rounded-full border-2 border-white shadow-lg"
+                        className="object-cover rounded-full border-2 border-white shadow-lg"
+                        style={{
+                          width: `${Math.max(wheelSize * 0.12, 24)}px`,
+                          height: `${Math.max(wheelSize * 0.12, 24)}px`
+                        }}
                       />
-                    </div>
-                  ) : (
-                    <div className="mb-2 w-8 h-8 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-white/20 backdrop-blur-sm rounded-full border-2 border-white/30 shadow-lg flex items-center justify-center transform hover:scale-110 transition-transform duration-200">
-                      <span className="text-lg sm:text-2xl md:text-3xl drop-shadow-lg">
-                        {getPrizeIcon(prize.name)}
-                      </span>
                     </div>
                   )}
                   
                   {/* Prize Text */}
                   {config.showLabels && (
-                    <div className="text-white font-bold text-xs sm:text-sm md:text-base drop-shadow-lg px-1 sm:px-2 text-center max-w-[60px] sm:max-w-[80px] leading-tight">
+                    <div 
+                      className="text-white font-bold drop-shadow-lg px-1 text-center leading-tight"
+                      style={{
+                        fontSize: `${Math.max(wheelSize * 0.04, 12)}px`,
+                        maxWidth: `${wheelSize * 0.25}px`,
+                        lineHeight: '1.1',
+                        minHeight: `${Math.max(wheelSize * 0.08, 20)}px`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
                       {prize.name}
                     </div>
                   )}
                   
                   {!isAvailable && !isDummy && (
-                    <div className="text-xs text-red-200 font-semibold mt-1 bg-red-600/20 px-2 py-1 rounded-full backdrop-blur-sm">
+                    <div 
+                      className="text-red-200 font-semibold mt-1 bg-red-600/20 px-2 py-1 rounded-full backdrop-blur-sm"
+                      style={{
+                        fontSize: `${Math.max(wheelSize * 0.025, 8)}px`
+                      }}
+                    >
                       SOLD OUT
                     </div>
                   )}
@@ -397,95 +499,140 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
           })}
         </div>
         
-        {/* Center Hub with enhanced design */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-gradient-wheel rounded-full border-2 sm:border-4 border-primary-foreground shadow-lg flex items-center justify-center animate-pulse">
-          <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-primary-foreground rounded-full shadow-inner"></div>
-          <div className="absolute w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 border-2 border-primary-foreground/30 rounded-full"></div>
-          {/* Center Text */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs sm:text-xs md:text-sm font-bold text-primary-foreground">
-              {config.centerText}
+        {/* Center Hub with enhanced design - Clickable Spin Button */}
+        <button 
+          onClick={spin}
+          disabled={isSpinning || availablePrizes.length === 0}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-full border-4 border-yellow-300 shadow-2xl flex items-center justify-center hover:scale-110 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus:outline-none focus:ring-4 focus:ring-yellow-400/50 group relative overflow-hidden animate-pulse z-30"
+          style={{ 
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: `${Math.max(wheelSize * 0.25, 48)}px`,
+            height: `${Math.max(wheelSize * 0.25, 48)}px`
+          }}
+        >
+          {/* Animated background effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+          
+          {/* Inner circle decoration */}
+          <div 
+            className="absolute border-2 border-yellow-200/50 rounded-full"
+            style={{
+              width: `${Math.max(wheelSize * 0.15, 24)}px`,
+              height: `${Math.max(wheelSize * 0.15, 24)}px`,
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)'
+            }}
+          ></div>
+          
+          {/* Center Text with animation */}
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <span 
+              className="font-bold text-yellow-900 group-hover:text-yellow-800 transition-colors duration-300 drop-shadow-sm text-center whitespace-nowrap"
+              style={{
+                fontSize: `${Math.max(wheelSize * 0.06, 10)}px`,
+                lineHeight: '1',
+                maxWidth: `${wheelSize * 0.18}px`,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}
+            >
+              {isSpinning ? (
+                <div className="flex items-center justify-center gap-1">
+                  <div 
+                    className="bg-yellow-800 rounded-full animate-bounce"
+                    style={{
+                      width: `${Math.max(wheelSize * 0.012, 3)}px`,
+                      height: `${Math.max(wheelSize * 0.012, 3)}px`
+                    }}
+                  ></div>
+                  <div 
+                    className="bg-yellow-800 rounded-full animate-bounce"
+                    style={{
+                      animationDelay: '0.1s',
+                      width: `${Math.max(wheelSize * 0.012, 3)}px`,
+                      height: `${Math.max(wheelSize * 0.012, 3)}px`
+                    }}
+                  ></div>
+                  <div 
+                    className="bg-yellow-800 rounded-full animate-bounce"
+                    style={{
+                      animationDelay: '0.2s',
+                      width: `${Math.max(wheelSize * 0.012, 3)}px`,
+                      height: `${Math.max(wheelSize * 0.012, 3)}px`
+                    }}
+                  ></div>
+                </div>
+              ) : (
+                config.centerText
+              )}
             </span>
           </div>
-        </div>
+        </button>
         
         {/* Enhanced Pointer */}
-        <div className="absolute -top-1 sm:-top-2 md:-top-4 left-1/2 transform -translate-x-1/2 z-10">
+        <div className="absolute -top-1 sm:-top-2 md:-top-3 left-1/2 -translate-x-1/2 z-10">
           <div className="relative">
-            <div className="w-0 h-0 border-l-3 border-r-3 border-b-6 sm:border-l-4 sm:border-r-4 sm:border-b-8 md:border-l-6 md:border-r-6 md:border-b-12 border-l-transparent border-r-transparent border-b-primary shadow-lg"></div>
-            <div className="absolute top-1 w-0 h-0 border-l-1.5 border-r-1.5 border-b-3 sm:border-l-2 sm:border-r-2 sm:border-b-4 md:border-l-3 md:border-r-3 md:border-b-6 border-l-transparent border-r-transparent border-b-white"></div>
+            <div 
+              className="w-0 h-0 border-l-transparent border-r-transparent border-b-yellow-400 shadow-2xl drop-shadow-lg"
+              style={{
+                borderLeftWidth: `${Math.max(wheelSize * 0.02, 8)}px`,
+                borderRightWidth: `${Math.max(wheelSize * 0.02, 8)}px`,
+                borderBottomWidth: `${Math.max(wheelSize * 0.04, 16)}px`
+              }}
+            ></div>
+            <div 
+              className="absolute top-0.5 w-0 h-0 border-l-transparent border-r-transparent border-b-yellow-200"
+              style={{
+                borderLeftWidth: `${Math.max(wheelSize * 0.01, 4)}px`,
+                borderRightWidth: `${Math.max(wheelSize * 0.01, 4)}px`,
+                borderBottomWidth: `${Math.max(wheelSize * 0.02, 8)}px`
+              }}
+            ></div>
           </div>
         </div>
 
-        {/* Spin Count Display */}
-        <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
-          <Badge variant="outline" className="bg-background/80 backdrop-blur-sm">
-            Spins: {spinCount}
-          </Badge>
-        </div>
       </div>
 
-      {/* Enhanced Spin Button */}
-      <Button 
-        onClick={spin}
-        disabled={isSpinning || availablePrizes.length === 0}
-        size="lg"
-        className="bg-gradient-wheel hover:bg-gradient-win text-primary-foreground font-bold text-base sm:text-lg md:text-xl px-6 sm:px-8 md:px-12 py-3 sm:py-4 md:py-6 rounded-full shadow-glow-primary transition-all duration-300 hover:shadow-glow-win hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 relative overflow-hidden group w-full max-w-sm sm:max-w-md"
-      >
-        {/* Button background animation */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-        
-        <div className="relative flex items-center justify-center">
-          {isSpinning ? (
-            <>
-              <div className="animate-spin w-6 h-6 border-2 border-primary-foreground border-t-transparent rounded-full mr-3"></div>
-              <span className="animate-pulse">Spinning...</span>
-            </>
-          ) : availablePrizes.length === 0 ? (
-            'All Prizes Won! 🎉'
-          ) : (
-            <>
-              <span className="mr-2">🎯</span>
-              SPIN THE WHEEL!
-              <span className="ml-2">🎯</span>
-            </>
-          )}
-        </div>
-      </Button>
 
-      {/* Enhanced Prize Status */}
-      <Card className="p-3 sm:p-4 md:p-6 bg-card/80 backdrop-blur-sm border-border w-full max-w-2xl">
-        <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-3 sm:mb-4 text-center bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Available Prizes
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
-          {prizes.map((prize) => (
-            <div key={prize.id} className="text-center group">
-              <Badge 
-                variant={prize.won < prize.quota ? "default" : "secondary"}
-                className={`${
-                  prize.won < prize.quota 
-                    ? "bg-accent text-accent-foreground hover:bg-accent/80" 
-                    : "bg-muted text-muted-foreground"
-                } transition-all duration-200 group-hover:scale-105 text-xs sm:text-sm`}
-              >
-                {prize.name}
-              </Badge>
-              <div className="text-xs text-muted-foreground mt-1 font-medium">
-                {prize.quota - prize.won} left
-              </div>
-              {prize.won > 0 && (
-                <div className="text-xs text-primary mt-1">
-                  {prize.won} won
+          {/* Enhanced Prize Status */}
+          <Card className="p-3 sm:p-4 bg-card/90 backdrop-blur-sm border-border w-full max-w-4xl shadow-lg">
+            <h3 className="text-base sm:text-lg font-bold mb-3 text-center bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              🎁 Available Prizes
+            </h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3">
+              {prizes.map((prize) => (
+                <div key={prize.id} className="text-center group">
+                  <div className="relative">
+                    <Badge
+                      variant={prize.won < prize.quota ? "default" : "secondary"}
+                      className={`${
+                        prize.won < prize.quota
+                          ? "bg-gradient-to-r from-accent to-accent/80 text-accent-foreground hover:from-accent/90 hover:to-accent/70 shadow-md"
+                          : "bg-muted text-muted-foreground"
+                      } transition-all duration-200 group-hover:scale-105 text-xs font-semibold w-full px-2 py-1.5 rounded-lg flex items-center justify-center text-center`}
+                    >
+                      {prize.name}
+                    </Badge>
+                    {prize.won < prize.quota && (
+                      <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                        {prize.quota - prize.won}
+                      </div>
+                    )}
+                  </div>
+                  {prize.won > 0 && (
+                    <div className="text-xs text-primary font-medium mt-1">
+                      +{prize.won} won
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
-          ))}
-        </div>
-      </Card>
+          </Card>
 
-      {/* Audio Manager */}
-      <AudioManager />
 
       {/* Popup Hadiah */}
       <PrizePopup prize={popupPrize} onClose={() => setPopupPrize(null)} />
