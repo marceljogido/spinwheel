@@ -125,9 +125,21 @@ export const AdminPanel = ({ prizes, onPrizesUpdate, totalSpins, wheelConfig, on
   };
 
   const updatePrizeWinPercentage = (id: string, winPercentage: number) => {
+    // Clamp between 0 and 100
+    const clampedPercentage = Math.max(0, Math.min(100, winPercentage));
+    
     onPrizesUpdate(prizes.map(p => 
-      p.id === id ? { ...p, winPercentage: Math.max(0, Math.min(100, winPercentage)) } : p
+      p.id === id ? { ...p, winPercentage: clampedPercentage } : p
     ));
+    
+    // Show warning if total percentage exceeds 100%
+    const totalPercentage = prizes.reduce((sum, prize) => 
+      sum + (prize.id === id ? clampedPercentage : prize.winPercentage), 0
+    );
+    
+    if (totalPercentage > 100) {
+      console.warn(`⚠️ Total win percentage is ${totalPercentage}%, which exceeds 100%`);
+    }
   };
 
   const startEditPrize = (prize: Prize) => {
@@ -239,6 +251,7 @@ export const AdminPanel = ({ prizes, onPrizesUpdate, totalSpins, wheelConfig, on
   const removeDummySegment = () => onWheelConfigUpdate({ ...wheelConfig, dummySegments: Math.max(0, wheelConfig.dummySegments - 1) });
 
   const totalPrizesAvailable = prizes.reduce((sum, prize) => sum + (prize.quota - prize.won), 0);
+  const totalWinPercentage = prizes.reduce((sum, prize) => sum + prize.winPercentage, 0);
 
   return (
     <div className="space-y-6">
@@ -249,6 +262,81 @@ export const AdminPanel = ({ prizes, onPrizesUpdate, totalSpins, wheelConfig, on
         <p className="text-muted-foreground mt-2">
           Manage your prize wheel configuration and view statistics
         </p>
+        
+        {/* Total Win Percentage Indicator */}
+        <div className="mt-4 p-3 bg-muted/50 rounded-lg max-w-md mx-auto">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Total Win Percentage:</span>
+            <span className={`text-lg font-bold ${
+              totalWinPercentage > 100 ? 'text-red-500' : 
+              totalWinPercentage === 100 ? 'text-green-500' : 
+              'text-yellow-500'
+            }`}>
+              {totalWinPercentage}%
+            </span>
+          </div>
+          {totalWinPercentage > 100 && (
+            <p className="text-xs text-red-500 mt-1">
+              ⚠️ Total exceeds 100% - some prizes may not be selectable
+            </p>
+          )}
+          {totalWinPercentage < 100 && (
+            <p className="text-xs text-yellow-500 mt-1">
+              ℹ️ Total less than 100% - remaining chance goes to random selection
+            </p>
+          )}
+          {totalWinPercentage === 100 && (
+            <p className="text-xs text-green-500 mt-1">
+              ✅ Perfect! All percentages add up to 100%
+            </p>
+          )}
+        </div>
+
+        {/* Quick Setup Buttons */}
+        <div className="mt-4 flex flex-wrap gap-2 justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              onPrizesUpdate(prizes.map(p => ({ ...p, winPercentage: 0 })));
+            }}
+            className="text-xs"
+          >
+            Reset All to 0%
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const equalPercentage = Math.floor(100 / prizes.length);
+              const remainder = 100 - (equalPercentage * prizes.length);
+              onPrizesUpdate(prizes.map((p, index) => ({ 
+                ...p, 
+                winPercentage: equalPercentage + (index < remainder ? 1 : 0)
+              })));
+            }}
+            className="text-xs"
+          >
+            Equal Distribution
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              onPrizesUpdate(prizes.map(p => ({ 
+                ...p, 
+                winPercentage: p.name === 'Try Again' ? 50 : 
+                             p.name === 'Free Coffee' ? 20 :
+                             p.name === '10% Discount' ? 15 :
+                             p.name === 'Gift Card $25' ? 10 :
+                             p.name === 'VIP Access' ? 5 : 0
+              })));
+            }}
+            className="text-xs"
+          >
+            Casino Style (50/20/15/10/5)
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="prizes" className="space-y-6">

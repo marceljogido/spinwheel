@@ -316,6 +316,13 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
     
     // Select winning prize based on percentage
     const selectWinningPrize = (prizes: Prize[]) => {
+      // Check if any prize has 100% win percentage
+      const prizeWith100Percent = prizes.find(prize => prize.winPercentage >= 100);
+      if (prizeWith100Percent) {
+        console.log('🎯 100% prize found:', prizeWith100Percent.name);
+        return prizeWith100Percent;
+      }
+      
       // Calculate total percentage of available prizes
       const totalPercentage = prizes.reduce((sum, prize) => sum + prize.winPercentage, 0);
       
@@ -328,15 +335,24 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
       const random = Math.random() * totalPercentage;
       let currentPercentage = 0;
       
+      console.log('🎲 Random selection:', {
+        totalPercentage,
+        random,
+        prizes: prizes.map(p => ({ name: p.name, percentage: p.winPercentage })),
+        availablePrizes: availablePrizes.map(p => ({ name: p.name, percentage: p.winPercentage }))
+      });
+      
       // Find the prize based on percentage ranges
       for (const prize of prizes) {
         currentPercentage += prize.winPercentage;
         if (random <= currentPercentage) {
+          console.log('🎯 Selected prize:', prize.name, 'at percentage:', currentPercentage);
           return prize;
         }
       }
       
       // Fallback to last prize if something goes wrong
+      console.log('⚠️ Fallback to last prize');
       return prizes[prizes.length - 1];
     };
     
