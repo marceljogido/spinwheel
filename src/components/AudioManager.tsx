@@ -4,6 +4,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { useAudio } from '@/contexts/AudioContext';
 import { 
   Volume2, 
   VolumeX, 
@@ -20,16 +21,12 @@ interface AudioManagerProps {
 }
 
 export const AudioManager = ({ onSpinStart, onWin }: AudioManagerProps) => {
-  const [isMuted, setIsMuted] = useState(false);
   const [masterVolume, setMasterVolume] = useState(0.7);
-  const [bgmVolume, setBgmVolume] = useState(0.5);
-  const [isBgmPlaying, setIsBgmPlaying] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const { isBgmPlaying, isMuted, bgmVolume, toggleBGM, toggleMute, setBgmVolume } = useAudio();
 
   // Audio refs
   const spinAudioRef = useRef<HTMLAudioElement | null>(null);
   const winAudioRef = useRef<HTMLAudioElement | null>(null);
-  const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Initialize audio elements
   useEffect(() => {
@@ -110,40 +107,6 @@ export const AudioManager = ({ onSpinStart, onWin }: AudioManagerProps) => {
     onWin?.();
   };
 
-  // Toggle BGM
-  const toggleBGM = () => {
-    if (isBgmPlaying) {
-      if (bgmAudioRef.current) {
-        bgmAudioRef.current.pause();
-      }
-      setIsBgmPlaying(false);
-    } else {
-      try {
-        const audio = new Audio('/sounds/bgm.mp3');
-        audio.volume = bgmVolume;
-        audio.loop = true;
-        audio.play().catch(console.error);
-        bgmAudioRef.current = audio;
-        setIsBgmPlaying(true);
-      } catch (error) {
-        console.warn('BGM error:', error);
-      }
-    }
-  };
-
-  // Toggle mute
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-    if (isBgmPlaying && bgmAudioRef.current) {
-      if (!isMuted) {
-        bgmAudioRef.current.pause();
-        setIsBgmPlaying(false);
-      } else {
-        bgmAudioRef.current.play().catch(console.error);
-        setIsBgmPlaying(true);
-      }
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -227,7 +190,7 @@ export const AudioManager = ({ onSpinStart, onWin }: AudioManagerProps) => {
           </div>
           <Switch
             checked={!isMuted}
-            onCheckedChange={setIsMuted}
+            onCheckedChange={toggleMute}
           />
         </div>
 

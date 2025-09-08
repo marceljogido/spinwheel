@@ -3,7 +3,8 @@ import { SpinWheel } from '@/components/SpinWheel';
 import { AdminPanel } from '@/components/AdminPanel';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Users, Crown, Sparkles, Gamepad2, Shield } from 'lucide-react';
+import { useAudio } from '@/contexts/AudioContext';
+import { Settings, Users, Crown, Sparkles, Gamepad2, Shield, Volume2, VolumeX, Music, Play, Pause } from 'lucide-react';
 
 interface Prize {
   id: string;
@@ -49,6 +50,7 @@ const Index = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('menu');
   const [totalSpins, setTotalSpins] = useState(0);
   const [wheelConfig, setWheelConfig] = useState<WheelConfig>(defaultWheelConfig);
+  const { isBgmPlaying, isMuted, toggleBGM, toggleMute } = useAudio();
 
 
   const [prizes, setPrizes] = useState<Prize[]>([
@@ -275,17 +277,40 @@ const Index = () => {
               </div>
             </div>
             
-                 <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
-                   <Button
-                     variant="outline"
-                     onClick={() => navigateTo('menu')}
-                     className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
-                     size="sm"
-                   >
-                     <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
-                     <span className="hidden sm:inline">Menu</span>
-                   </Button>
-                 </div>
+            <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
+              {/* Audio Controls */}
+              <Button
+                variant="outline"
+                onClick={toggleMute}
+                className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                size="sm"
+                title={isMuted ? "Unmute" : "Mute"}
+              >
+                {isMuted ? <VolumeX className="w-3 h-3 sm:w-4 sm:h-4" /> : <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" />}
+                <span className="hidden sm:inline">{isMuted ? "Unmute" : "Mute"}</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={toggleBGM}
+                className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                size="sm"
+                title={isBgmPlaying ? "Stop BGM" : "Play BGM"}
+              >
+                {isBgmPlaying ? <Pause className="w-3 h-3 sm:w-4 sm:h-4" /> : <Play className="w-3 h-3 sm:w-4 sm:h-4" />}
+                <span className="hidden sm:inline">{isBgmPlaying ? "Stop BGM" : "Play BGM"}</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => navigateTo('menu')}
+                className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                size="sm"
+              >
+                <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Menu</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
