@@ -74,9 +74,10 @@ export const AudioProvider = ({ children }: AudioProviderProps) => {
   };
 
   const toggleMute = () => {
-    setIsMuted(!isMuted);
+    const newMutedState = !isMuted;
+    setIsMuted(newMutedState);
     if (bgmAudioRef.current) {
-      bgmAudioRef.current.volume = isMuted ? bgmVolume : 0;
+      bgmAudioRef.current.volume = newMutedState ? 0 : bgmVolume;
     }
   };
 

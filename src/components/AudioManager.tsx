@@ -34,7 +34,6 @@ export const AudioManager = ({ onSpinStart, onWin }: AudioManagerProps) => {
       // Create audio elements
       spinAudioRef.current = new Audio();
       winAudioRef.current = new Audio();
-      bgmAudioRef.current = new Audio();
 
       // Set audio properties
       if (spinAudioRef.current) {
@@ -48,12 +47,6 @@ export const AudioManager = ({ onSpinStart, onWin }: AudioManagerProps) => {
         winAudioRef.current.loop = false;
         winAudioRef.current.preload = 'none';
       }
-
-      if (bgmAudioRef.current) {
-        bgmAudioRef.current.volume = bgmVolume;
-        bgmAudioRef.current.loop = true;
-        bgmAudioRef.current.preload = 'none';
-      }
     } catch (error) {
       console.warn('Audio initialization failed:', error);
     }
@@ -62,7 +55,6 @@ export const AudioManager = ({ onSpinStart, onWin }: AudioManagerProps) => {
     return () => {
       if (spinAudioRef.current) spinAudioRef.current.pause();
       if (winAudioRef.current) winAudioRef.current.pause();
-      if (bgmAudioRef.current) bgmAudioRef.current.pause();
     };
   }, []);
 
@@ -74,10 +66,7 @@ export const AudioManager = ({ onSpinStart, onWin }: AudioManagerProps) => {
     if (winAudioRef.current) {
       winAudioRef.current.volume = isMuted ? 0 : masterVolume;
     }
-    if (bgmAudioRef.current) {
-      bgmAudioRef.current.volume = isMuted ? 0 : bgmVolume;
-    }
-  }, [masterVolume, bgmVolume, isMuted]);
+  }, [masterVolume, isMuted]);
 
   // Play spin sound
   const playSpinSound = () => {
@@ -271,26 +260,4 @@ export const AudioManager = ({ onSpinStart, onWin }: AudioManagerProps) => {
       </div>
     </div>
   );
-};
-
-// Export functions untuk digunakan di komponen lain
-export const useAudio = () => {
-  const audioManagerRef = useRef<{
-    playSpinSound: () => void;
-    playWinSound: () => void;
-  } | null>(null);
-
-  const playSpinSound = () => {
-    audioManagerRef.current?.playSpinSound();
-  };
-
-  const playWinSound = () => {
-    audioManagerRef.current?.playWinSound();
-  };
-
-  return {
-    audioManagerRef,
-    playSpinSound,
-    playWinSound
-  };
 }; 
