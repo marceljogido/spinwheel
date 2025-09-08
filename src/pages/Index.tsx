@@ -58,7 +58,7 @@ const Index = () => {
       color: '#8B4513', // Brown coffee color
       quota: 5,
       won: 0,
-      winPercentage: 25 // 25% kemungkinan menang
+      winPercentage: 15 // 15% kemungkinan menang
     },
     {
       id: '2',
@@ -66,7 +66,7 @@ const Index = () => {
       color: '#FFD700', // Gold for discount
       quota: 10,
       won: 0,
-      winPercentage: 30 // 30% kemungkinan menang
+      winPercentage: 20 // 20% kemungkinan menang
     },
     {
       id: '3',
@@ -74,7 +74,7 @@ const Index = () => {
       color: '#4169E1', // Royal blue for clothing
       quota: 3,
       won: 0,
-      winPercentage: 15 // 15% kemungkinan menang
+      winPercentage: 8 // 8% kemungkinan menang
     },
     {
       id: '4',
@@ -82,7 +82,7 @@ const Index = () => {
       color: '#32CD32', // Lime green for money
       quota: 2,
       won: 0,
-      winPercentage: 10 // 10% kemungkinan menang
+      winPercentage: 5 // 5% kemungkinan menang
     },
     {
       id: '5',
@@ -90,7 +90,7 @@ const Index = () => {
       color: '#FF6347', // Tomato red for try again
       quota: 20,
       won: 0,
-      winPercentage: 15 // 15% kemungkinan menang
+      winPercentage: 45 // 45% kemungkinan menang (paling sering)
     },
     {
       id: '6',
@@ -98,7 +98,7 @@ const Index = () => {
       color: '#9370DB', // Medium purple for VIP
       quota: 1,
       won: 0,
-      winPercentage: 5 // 5% kemungkinan menang (sangat langka)
+      winPercentage: 2 // 2% kemungkinan menang (sangat langka)
     }
   ]);
 
