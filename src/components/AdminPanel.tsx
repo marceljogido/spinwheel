@@ -10,19 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Plus, Trash2, BarChart3, Settings, GripVertical, Eye, EyeOff, Image as ImageIcon, Sparkles, Edit3, Check, X } from 'lucide-react';
 import { AudioManager } from './AudioManager';
 import type { Prize } from '@/types/prize';
-
-interface WheelConfig {
-  centerText: string;
-  spinAnimation: 'smooth' | 'bounce' | 'natural';
-  defaultColor: string;
-  showLabels: boolean;
-  showImages: boolean;
-  wheelSize: number; // px
-  showConfetti: boolean;
-  showShake: boolean;
-  showGlow: boolean;
-  dummySegments: number;
-}
+import type { WheelConfig } from '@/lib/wheelDefaults';
 
 interface AdminPanelProps {
   prizes: Prize[];
@@ -42,19 +30,6 @@ const predefinedColors = [
   '#FF8C00', // Dark Orange - Energy
   '#20B2AA'  // Light Sea Green - Fresh
 ];
-
-const defaultWheelConfig: WheelConfig = {
-  centerText: 'SPIN!',
-  spinAnimation: 'smooth',
-  defaultColor: '#FFD700',
-  showLabels: true,
-  showImages: true,
-  wheelSize: 340,
-  showConfetti: true,
-  showShake: true,
-  showGlow: true,
-  dummySegments: 0,
-};
 
 export const AdminPanel = ({ prizes, onPrizesUpdate, totalSpins, wheelConfig, onWheelConfigUpdate }: AdminPanelProps) => {
   const [newPrize, setNewPrize] = useState({

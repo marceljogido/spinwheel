@@ -3,19 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Prize } from '@/types/prize';
-
-interface WheelConfig {
-  centerText: string;
-  spinAnimation: 'smooth' | 'bounce' | 'natural';
-  defaultColor: string;
-  showLabels: boolean;
-  showImages: boolean;
-  wheelSize: number;
-  showConfetti: boolean;
-  showShake: boolean;
-  showGlow: boolean;
-  dummySegments: number;
-}
+import type { WheelConfig } from '@/lib/wheelDefaults';
 
 interface SpinWheelProps {
   prizes: Prize[];
