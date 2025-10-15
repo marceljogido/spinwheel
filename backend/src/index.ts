@@ -1,8 +1,8 @@
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { healthcheck } from './db/pool.js';
-import { prizesRouter } from './routes/prizes.js';
+import { healthcheck } from './db/pool';
+import { prizesRouter } from './routes/prizes';
 
 const app = express();
 

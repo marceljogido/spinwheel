@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { PoolClient } from 'pg';
-import { mapPrizeRow, query, withTransaction } from '../db/pool.js';
-import { prizeInputSchema } from '../utils/validation.js';
+import { mapPrizeRow, query, withTransaction } from '../db/pool';
+import { prizeInputSchema } from '../utils/validation';
 
 const router = Router();
 
