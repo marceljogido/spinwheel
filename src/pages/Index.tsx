@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Pause, Play, Volume2, VolumeX, Music } from 'lucide-react';
+import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { SpinWheel } from '@/components/SpinWheel';
-import { Button } from '@/components/ui/button';
 import type { Prize } from '@/types/prize';
-import { useAudio } from '@/contexts/AudioContext';
 import { listPrizes, recordPrizeWin } from '@/lib/api/prizes';
 import {
   PRIZES_STORAGE_KEY,
@@ -14,7 +12,6 @@ import {
 import { fallbackPrizes, defaultWheelConfig, type WheelConfig } from '@/lib/wheelDefaults';
 
 const Index = () => {
-  const { isBgmPlaying, isMuted, toggleBGM, toggleMute } = useAudio();
   const [prizes, setPrizes] = useState<Prize[]>(fallbackPrizes);
   const [wheelConfig, setWheelConfig] = useState<WheelConfig>(defaultWheelConfig);
   const [totalSpins, setTotalSpins] = useState(0);
@@ -142,6 +139,10 @@ const Index = () => {
     });
     setLastPrizeName(prize.name);
 
+    if (!fetchedRemotePrizes) {
+      return;
+    }
+
     try {
       const updated = await recordPrizeWin(prize.id);
       setPrizes(prev => prev.map(p => (p.id === updated.id ? updated : p)));
@@ -153,7 +154,8 @@ const Index = () => {
 
   const availablePrizes = prizes.filter(prize => prize.won < prize.quota);
   const activePrizes = availablePrizes.length > 0 ? availablePrizes : prizes;
-  const usingFallback = !fetchedRemotePrizes && !isLoadingPrizes;
+
+  const showStatusBanner = Boolean(prizeSyncError) || (isLoadingPrizes && !fetchedRemotePrizes);
 
   return (
     <div className="relative min-h-[100svh] overflow-hidden bg-[#f6f7fb] text-[#0f3a64]">
@@ -163,76 +165,38 @@ const Index = () => {
         className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
       />
 
-      <div className="relative z-10 flex min-h-[100svh] flex-col">
-        <div className="flex justify-end gap-2 px-4 pt-6 sm:px-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleMute}
-            className="flex items-center gap-2 rounded-full border border-white/50 bg-white/70 px-4 text-[#0f3a64] backdrop-blur transition hover:bg-white"
-          >
-            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            <span className="text-xs font-semibold uppercase tracking-[0.2em]">{isMuted ? 'Unmute' : 'Mute'}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleBGM}
-            className="flex items-center gap-2 rounded-full border border-white/50 bg-white/70 px-4 text-[#0f3a64] backdrop-blur transition hover:bg-white"
-          >
-            {isBgmPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            <span className="text-xs font-semibold uppercase tracking-[0.2em]">BGM</span>
-          </Button>
-        </div>
+      <div className="relative z-10 flex min-h-[100svh] flex-col items-center px-4 pb-10 pt-10 text-[#0f3a64] sm:px-6 md:pb-12 md:pt-12">
+        <header className="w-full max-w-4xl text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.6em] text-[#1f4f9b]/80">Yuk Kenalan Sama Movin!</p>
+          <h1 className="mt-3 text-balance text-3xl font-black leading-tight text-[#0f3a64] sm:text-4xl md:text-[2.75rem]">
+            Mainkan games ini &amp; bawalah hadiah menariknya!
+          </h1>
+        </header>
 
-        <main className="flex flex-1 flex-col items-center gap-6 px-4 pb-16 pt-14 sm:gap-8 sm:px-6 sm:pt-16 md:gap-10 md:pb-20 md:pt-12 md:justify-center">
-          <div className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.6em] text-[#1f4f9b]/80">Yuk Kenalan Sama Movin!</p>
-            <h1 className="mt-3 max-w-2xl text-balance text-3xl font-black leading-tight text-[#0f3a64] sm:text-4xl md:text-[2.75rem]">
-              Mainkan games ini &amp; bawalah hadiah menariknya!
-            </h1>
-          </div>
-
+        <main className="mt-8 flex w-full flex-1 flex-col items-center justify-center gap-10 sm:gap-12">
           <SpinWheel
             prizes={activePrizes}
             onPrizeWon={handlePrizeWon}
             wheelConfig={wheelConfig}
           />
 
-          <div className="w-full max-w-xl rounded-[32px] bg-white/90 px-6 py-6 text-center shadow-[0_20px_45px_rgba(15,58,100,0.18)] backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.5em] text-[#1f4f9b]/70">Hadiah Kamu</p>
-            <p className="mt-3 text-2xl font-extrabold text-[#0f3a64] sm:text-3xl">
-              {lastPrizeName ?? 'Putar roda untuk melihat hadiahmu'}
+          <div className="w-full max-w-xl text-center">
+            <p className="mx-auto max-w-md rounded-[28px] bg-white/85 px-6 py-4 text-base font-semibold uppercase tracking-[0.4em] text-[#1f4f9b] shadow-[0_16px_40px_rgba(15,58,100,0.18)] backdrop-blur">
+              {lastPrizeName ? `[ ${lastPrizeName} ]` : '[ Putar roda untuk melihat hadiahmu ]'}
             </p>
           </div>
 
-          {(isLoadingPrizes || prizeSyncError || usingFallback) && (
-            <div className="flex w-full max-w-xl flex-col items-center gap-2 text-center">
-              {isLoadingPrizes && (
-                <span className="flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-sm font-medium text-[#0f3a64] backdrop-blur">
-                  <RefreshCw className="h-4 w-4 animate-spin" /> Menyinkronkan hadiah terbaru…
-                </span>
-              )}
-              {prizeSyncError && (
-                <span className="flex items-center gap-2 rounded-[24px] bg-[#ffefef] px-4 py-2 text-sm font-medium text-[#b42318] shadow">
-                  {prizeSyncError}
-                </span>
-              )}
-              {usingFallback && !prizeSyncError && !isLoadingPrizes && (
-                <span className="flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-sm font-medium text-[#0f3a64] backdrop-blur">
-                  <Music className="h-4 w-4" /> Menggunakan data bawaan sementara.
-                </span>
-              )}
+          {showStatusBanner && (
+            <div className="flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-[#0f3a64] backdrop-blur">
+              {prizeSyncError ? <AlertTriangle className="h-4 w-4" /> : <RefreshCw className="h-4 w-4 animate-spin" />}
+              {prizeSyncError ?? 'Menyinkronkan hadiah terbaru…'}
             </div>
           )}
         </main>
 
-        <footer className="flex flex-wrap items-center justify-center gap-3 px-4 pb-8 text-xs text-[#0f3a64]/80 sm:px-6">
-          <span className="rounded-full bg-white/70 px-4 py-2 font-semibold uppercase tracking-[0.3em] backdrop-blur">
+        <footer className="mt-10 flex w-full max-w-4xl justify-center">
+          <span className="rounded-full bg-white/70 px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-[#0f3a64] backdrop-blur">
             Total Spin: {totalSpins}
-          </span>
-          <span className="rounded-full bg-white/70 px-4 py-2 font-semibold uppercase tracking-[0.3em] backdrop-blur">
-            Hadiah Aktif: {activePrizes.length}
           </span>
         </footer>
       </div>
