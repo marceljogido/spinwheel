@@ -1,20 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SpinWheel } from '@/components/SpinWheel';
 import { AdminPanel } from '@/components/AdminPanel';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAudio } from '@/contexts/AudioContext';
 import { Settings, Users, Crown, Sparkles, Gamepad2, Shield, Volume2, VolumeX, Music, Play, Pause } from 'lucide-react';
-
-interface Prize {
-  id: string;
-  name: string;
-  color: string;
-  quota: number;
-  won: number;
-  image?: string;
-  winPercentage: number; // Persentase kemungkinan menang (0-100)
-}
+import type { Prize } from '@/types/prize';
+import { listPrizes, recordPrizeWin } from '@/lib/api/prizes';
 
 interface WheelConfig {
   centerText: string;
@@ -46,69 +38,109 @@ const defaultWheelConfig: WheelConfig = {
   dummySegments: 0,
 };
 
+const fallbackPrizes: Prize[] = [
+  {
+    id: '11111111-1111-4111-8111-111111111111',
+    name: 'Free Coffee',
+    color: '#8B4513',
+    quota: 5,
+    won: 0,
+    winPercentage: 15
+  },
+  {
+    id: '22222222-2222-4222-8222-222222222222',
+    name: '10% Discount',
+    color: '#FFD700',
+    quota: 10,
+    won: 0,
+    winPercentage: 20
+  },
+  {
+    id: '33333333-3333-4333-8333-333333333333',
+    name: 'Free T-Shirt',
+    color: '#4169E1',
+    quota: 3,
+    won: 0,
+    winPercentage: 8
+  },
+  {
+    id: '44444444-4444-4444-8444-444444444444',
+    name: 'Gift Card $25',
+    color: '#32CD32',
+    quota: 2,
+    won: 0,
+    winPercentage: 5
+  },
+  {
+    id: '55555555-5555-4555-8555-555555555555',
+    name: 'Try Again',
+    color: '#FF6347',
+    quota: 20,
+    won: 0,
+    winPercentage: 45
+  },
+  {
+    id: '66666666-6666-4666-8666-666666666666',
+    name: 'VIP Access',
+    color: '#9370DB',
+    quota: 1,
+    won: 0,
+    winPercentage: 2
+  }
+];
+
 const Index = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('menu');
   const [totalSpins, setTotalSpins] = useState(0);
   const [wheelConfig, setWheelConfig] = useState<WheelConfig>(defaultWheelConfig);
   const { isBgmPlaying, isMuted, toggleBGM, toggleMute } = useAudio();
 
+  const [prizes, setPrizes] = useState<Prize[]>(fallbackPrizes);
+  const [isLoadingPrizes, setIsLoadingPrizes] = useState(false);
+  const [prizeSyncError, setPrizeSyncError] = useState<string | null>(null);
 
-  const [prizes, setPrizes] = useState<Prize[]>([
-    {
-      id: '1',
-      name: 'Free Coffee',
-      color: '#8B4513', // Brown coffee color
-      quota: 5,
-      won: 0,
-      winPercentage: 15 // 15% kemungkinan menang
-    },
-    {
-      id: '2',
-      name: '10% Discount',
-      color: '#FFD700', // Gold for discount
-      quota: 10,
-      won: 0,
-      winPercentage: 20 // 20% kemungkinan menang
-    },
-    {
-      id: '3',
-      name: 'Free T-Shirt',
-      color: '#4169E1', // Royal blue for clothing
-      quota: 3,
-      won: 0,
-      winPercentage: 8 // 8% kemungkinan menang
-    },
-    {
-      id: '4',
-      name: 'Gift Card $25',
-      color: '#32CD32', // Lime green for money
-      quota: 2,
-      won: 0,
-      winPercentage: 5 // 5% kemungkinan menang
-    },
-    {
-      id: '5',
-      name: 'Try Again',
-      color: '#FF6347', // Tomato red for try again
-      quota: 20,
-      won: 0,
-      winPercentage: 45 // 45% kemungkinan menang (paling sering)
-    },
-    {
-      id: '6',
-      name: 'VIP Access',
-      color: '#9370DB', // Medium purple for VIP
-      quota: 1,
-      won: 0,
-      winPercentage: 2 // 2% kemungkinan menang (sangat langka)
-    }
-  ]);
+  useEffect(() => {
+    let ignore = false;
+    const loadPrizes = async () => {
+      setIsLoadingPrizes(true);
+      try {
+        const remotePrizes = await listPrizes();
+        if (!ignore && remotePrizes.length > 0) {
+          setPrizes(remotePrizes);
+        }
+      } catch (error) {
+        if (!ignore) {
+          const message = error instanceof Error ? error.message : 'Tidak dapat memuat hadiah dari server';
+          setPrizeSyncError(message);
+          console.warn('Failed to load prizes from API, using local fallback.', error);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingPrizes(false);
+        }
+      }
+    };
 
-  const handlePrizeWon = (prize: Prize) => {
-    setPrizes(prev => prev.map(p => 
+    loadPrizes();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const handlePrizeWon = async (prize: Prize) => {
+    setPrizes(prev => prev.map(p =>
       p.id === prize.id ? { ...p, won: p.won + 1 } : p
     ));
     setTotalSpins(prev => prev + 1);
+
+    try {
+      const updated = await recordPrizeWin(prize.id);
+      setPrizes(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+    } catch (error) {
+      console.error('Failed to persist prize win', error);
+      setPrizeSyncError('Gagal menyimpan hasil spin ke server.');
+    }
   };
 
   const handlePrizesUpdate = (newPrizes: Prize[]) => {
@@ -162,7 +194,19 @@ const Index = () => {
 
       {/* Main Menu Content */}
       <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 md:py-16 relative z-10">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto space-y-4">
+          {(isLoadingPrizes || prizeSyncError) && (
+            <div className="rounded-xl border border-border bg-card/70 backdrop-blur p-4 flex flex-col gap-2">
+              {isLoadingPrizes && (
+                <span className="text-sm text-muted-foreground">Menyinkronkan hadiah dari server…</span>
+              )}
+              {prizeSyncError && (
+                <span className="text-sm text-destructive">
+                  {prizeSyncError} — menggunakan data bawaan sementara.
+                </span>
+              )}
+            </div>
+          )}
           {/* Welcome Section */}
           <div className="text-center space-y-4 sm:space-y-6 mb-8 sm:mb-12 animate-fade-slide-up">
             <div className="inline-flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground px-4 sm:px-6 py-2 sm:py-3 rounded-full font-semibold text-sm sm:text-lg shadow-lg">

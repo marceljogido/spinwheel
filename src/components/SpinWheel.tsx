@@ -2,16 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-
-interface Prize {
-  id: string;
-  name: string;
-  color: string;
-  quota: number;
-  won: number;
-  image?: string;
-  winPercentage: number; // Persentase kemungkinan menang (0-100)
-}
+import type { Prize } from '@/types/prize';
 
 interface WheelConfig {
   centerText: string;

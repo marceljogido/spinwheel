@@ -12,13 +12,22 @@ Aplikasi prize wheel interaktif yang menarik dan mudah digunakan!
 
 ## 🚀 Cara Menjalankan
 
-### **Development Mode:**
+### **Development Mode (Frontend):**
 ```bash
 npm install
 npm run dev
 ```
 
-### **Production Mode:**
+### **Development Mode (Backend API):**
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+Atur variabel lingkungan di `.env` (frontend) dan `backend/.env` agar `VITE_API_URL` menunjuk ke port API (default `http://localhost:4000`).
+
+### **Production Build:**
 ```bash
 npm install
 npm run build
@@ -35,20 +44,25 @@ npm run preview
 ## 📁 Struktur Project
 
 ```
-prize-wheel-whirl-main/
-├── src/                    # Source code React
-│   ├── components/         # UI Components
-│   ├── pages/             # Pages & Routes
-│   └── ui/                # UI Library
-├── server-simple.js        # Backend server
-├── dist/                   # Built React app
-└── package.json            # Dependencies
+prize-wheel-whirl/
+├── backend/                # Express + PostgreSQL API (pgAdmin friendly)
+│   ├── src/
+│   ├── package.json
+│   └── .env.example
+├── src/                    # React frontend source
+│   ├── components/
+│   ├── lib/
+│   ├── pages/
+│   └── types/
+├── public/
+├── package.json
+└── README.md
 ```
 
 ## 🔧 Dependencies
 
 - **Frontend:** React, TypeScript, Tailwind CSS
-- **Backend:** Express.js, CORS
+- **Backend:** Express.js, CORS, Helmet, pg
 - **UI:** Radix UI, Lucide Icons
 
 ## 📱 Device Support

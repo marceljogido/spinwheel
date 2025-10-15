@@ -9,16 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Plus, Trash2, BarChart3, Settings, GripVertical, Eye, EyeOff, Image as ImageIcon, Sparkles, Edit3, Check, X } from 'lucide-react';
 import { AudioManager } from './AudioManager';
-
-interface Prize {
-  id: string;
-  name: string;
-  color: string;
-  quota: number;
-  won: number;
-  image?: string;
-  winPercentage: number; // Persentase kemungkinan menang (0-100)
-}
+import type { Prize } from '@/types/prize';
 
 interface WheelConfig {
   centerText: string;
@@ -96,7 +87,7 @@ export const AdminPanel = ({ prizes, onPrizesUpdate, totalSpins, wheelConfig, on
   const addPrize = () => {
     if (!newPrize.name.trim()) return;
     const prize: Prize = {
-      id: Date.now().toString(),
+      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
       name: newPrize.name,
       color: newPrize.color,
       quota: newPrize.quota,
