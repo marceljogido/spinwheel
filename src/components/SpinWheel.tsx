@@ -171,20 +171,22 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
     const updateWheelSize = () => {
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
+      const isPortrait = screenHeight >= screenWidth;
 
       let sizeFromWidth: number;
       if (screenWidth < 480) {
-        sizeFromWidth = Math.min(screenWidth * 0.8, 280);
+        sizeFromWidth = screenWidth * (isPortrait ? 0.92 : 0.85);
       } else if (screenWidth < 768) {
-        sizeFromWidth = Math.min(screenWidth * 0.65, 320);
+        sizeFromWidth = screenWidth * (isPortrait ? 0.78 : 0.7);
       } else if (screenWidth < 1024) {
-        sizeFromWidth = Math.min(screenWidth * 0.55, 360);
+        sizeFromWidth = screenWidth * 0.6;
       } else {
-        sizeFromWidth = Math.min(screenWidth * 0.4, 420);
+        sizeFromWidth = Math.min(screenWidth * 0.45, 520);
       }
 
-      const sizeFromHeight = screenHeight * 0.55;
-      const finalSize = Math.min(sizeFromWidth, sizeFromHeight);
+      const sizeFromHeight = screenHeight * (isPortrait ? 0.58 : 0.62);
+      const baseline = config.wheelSize ?? 380;
+      const finalSize = Math.max(Math.min(sizeFromWidth, sizeFromHeight), Math.min(280, baseline));
       setWheelSize(finalSize);
     };
 
@@ -339,6 +341,7 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
           width: wheelSize,
           height: wheelSize,
           maxWidth: '92vw',
+          marginTop: Math.max(wheelSize * 0.18, 56),
         }}
       >
         <div className="pointer-events-none absolute inset-[-14%] rounded-full bg-[#0e3f76]/15 blur-3xl" />

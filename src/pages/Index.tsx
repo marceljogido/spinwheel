@@ -156,14 +156,14 @@ const Index = () => {
   const usingFallback = !fetchedRemotePrizes && !isLoadingPrizes;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f6f7fb] text-[#0f3a64]">
+    <div className="relative min-h-[100svh] overflow-hidden bg-[#f6f7fb] text-[#0f3a64]">
       <img
         src="/assets/movin-background.svg"
         alt="Latar belakang Bank Mandiri Taspen"
         className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
       />
 
-      <div className="relative z-10 flex min-h-screen flex-col">
+      <div className="relative z-10 flex min-h-[100svh] flex-col">
         <div className="flex justify-end gap-2 px-4 pt-6 sm:px-6">
           <Button
             variant="ghost"
@@ -185,7 +185,7 @@ const Index = () => {
           </Button>
         </div>
 
-        <main className="flex flex-1 flex-col items-center justify-center gap-8 px-4 pb-16 pt-10 sm:px-6 md:gap-10">
+        <main className="flex flex-1 flex-col items-center gap-6 px-4 pb-16 pt-14 sm:gap-8 sm:px-6 sm:pt-16 md:gap-10 md:pb-20 md:pt-12 md:justify-center">
           <div className="text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.6em] text-[#1f4f9b]/80">Yuk Kenalan Sama Movin!</p>
             <h1 className="mt-3 max-w-2xl text-balance text-3xl font-black leading-tight text-[#0f3a64] sm:text-4xl md:text-[2.75rem]">
