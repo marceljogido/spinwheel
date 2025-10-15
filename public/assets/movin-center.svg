@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Movin wheel button</title>
+  <desc id="desc">Circular badge with blue core, golden border, and Movin logo text.</desc>
+  <defs>
+    <radialGradient id="innerGlow" cx="50%" cy="45%" r="60%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.92" />
+      <stop offset="0.55" stop-color="#f1f5ff" stop-opacity="0.95" />
+      <stop offset="1" stop-color="#d7e3ff" stop-opacity="1" />
+    </radialGradient>
+    <linearGradient id="outerRing" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffd048" />
+      <stop offset="1" stop-color="#f7961d" />
+    </linearGradient>
+    <linearGradient id="innerRing" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fef6dc" />
+      <stop offset="1" stop-color="#ffe396" />
+    </linearGradient>
+  </defs>
+  <circle cx="128" cy="128" r="124" fill="url(#outerRing)" />
+  <circle cx="128" cy="128" r="102" fill="url(#innerRing)" />
+  <circle cx="128" cy="128" r="90" fill="#0d3d75" />
+  <circle cx="128" cy="122" r="76" fill="url(#innerGlow)" />
+  <text x="128" y="135" text-anchor="middle" font-size="60" font-weight="700" fill="#0b2b53" font-family="'Poppins', 'Segoe UI', sans-serif" letter-spacing="1">
+    Movin
+  </text>
+  <text x="128" y="168" text-anchor="middle" font-size="18" font-weight="500" fill="#fff7d6" font-family="'Poppins', 'Segoe UI', sans-serif">
+    by bank mandiri taspen
+  </text>
+</svg>

@@ -14,12 +14,12 @@ export interface WheelConfig {
 }
 
 export const defaultWheelConfig: WheelConfig = {
-  centerText: 'SPIN!',
+  centerText: 'Movin',
   spinAnimation: 'smooth',
-  defaultColor: '#FFD700',
+  defaultColor: '#cfd3dc',
   showLabels: true,
-  showImages: true,
-  wheelSize: 340,
+  showImages: false,
+  wheelSize: 380,
   showConfetti: true,
   showShake: true,
   showGlow: true,
@@ -29,50 +29,42 @@ export const defaultWheelConfig: WheelConfig = {
 export const fallbackPrizes: Prize[] = [
   {
     id: '11111111-1111-4111-8111-111111111111',
-    name: 'Free Coffee',
-    color: '#8B4513',
-    quota: 5,
+    name: 'Handuk Eksklusif',
+    color: '#1f4f9b',
+    quota: 12,
     won: 0,
-    winPercentage: 15
+    winPercentage: 18,
   },
   {
     id: '22222222-2222-4222-8222-222222222222',
-    name: '10% Discount',
-    color: '#FFD700',
+    name: 'Payung Movin',
+    color: '#f5c33f',
     quota: 10,
     won: 0,
-    winPercentage: 20
+    winPercentage: 20,
   },
   {
     id: '33333333-3333-4333-8333-333333333333',
-    name: 'Free T-Shirt',
-    color: '#4169E1',
-    quota: 3,
+    name: 'Kipas Angin Mini',
+    color: '#cfd3dc',
+    quota: 8,
     won: 0,
-    winPercentage: 8
+    winPercentage: 16,
   },
   {
     id: '44444444-4444-4444-8444-444444444444',
-    name: 'Gift Card $25',
-    color: '#32CD32',
-    quota: 2,
+    name: 'Coba Lagi',
+    color: '#f2f2f2',
+    quota: 30,
     won: 0,
-    winPercentage: 5
+    winPercentage: 30,
   },
   {
     id: '55555555-5555-4555-8555-555555555555',
-    name: 'Try Again',
-    color: '#FF6347',
-    quota: 20,
+    name: 'Anda Belum Beruntung',
+    color: '#2c6eb6',
+    quota: 25,
     won: 0,
-    winPercentage: 45
+    winPercentage: 16,
   },
-  {
-    id: '66666666-6666-4666-8666-666666666666',
-    name: 'VIP Access',
-    color: '#9370DB',
-    quota: 1,
-    won: 0,
-    winPercentage: 2
-  }
 ];

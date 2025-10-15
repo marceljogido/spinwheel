@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" role="img" aria-labelledby="title desc">
+  <title id="title">Movin promotional backdrop</title>
+  <desc id="desc">A white background with blue and yellow paint strokes inspired by Bank Mandiri Taspen branding.</desc>
+  <defs>
+    <linearGradient id="bgGradient" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="0.45" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#f6f7fb" />
+    </linearGradient>
+    <linearGradient id="blueStroke" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#124f9c" />
+      <stop offset="0.45" stop-color="#1d5fba" />
+      <stop offset="1" stop-color="#0a3370" />
+    </linearGradient>
+    <linearGradient id="yellowStroke" x1="0" x2="1" y1="0" y2="0.8">
+      <stop offset="0" stop-color="#f4b400" />
+      <stop offset="0.35" stop-color="#f6c10c" />
+      <stop offset="1" stop-color="#f7d64b" />
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bgGradient)" />
+  <path fill="url(#blueStroke)" fill-opacity="0.95" d="M-20 300C140 170 400 110 640 140c340 44 520-80 520-80v260H-20z" />
+  <path fill="url(#yellowStroke)" fill-opacity="0.85" d="M-40 420C120 330 360 280 620 300c330 25 460-120 460-120v240H-40z" />
+  <path fill="#f6f7fb" d="M-10 600h1100v1320H-10z" />
+</svg>

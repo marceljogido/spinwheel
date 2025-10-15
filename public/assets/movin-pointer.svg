@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 160" role="img" aria-labelledby="title desc">
+  <title id="title">Movin wheel pointer</title>
+  <desc id="desc">Gold droplet pointer with an orange jewel.</desc>
+  <defs>
+    <linearGradient id="pointerBody" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f8d34d" />
+      <stop offset="0.45" stop-color="#f2a71f" />
+      <stop offset="1" stop-color="#c97100" />
+    </linearGradient>
+    <radialGradient id="pointerJewel" cx="40%" cy="35%" r="60%">
+      <stop offset="0" stop-color="#ffdb7b" />
+      <stop offset="0.45" stop-color="#f48c1d" />
+      <stop offset="1" stop-color="#7f2900" />
+    </radialGradient>
+    <linearGradient id="pointerEdge" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#fff4c7" />
+      <stop offset="1" stop-color="#f2a71f" stop-opacity="0.1" />
+    </linearGradient>
+  </defs>
+  <path d="M18 80c0-38 28-70 70-70h84c26 0 48 22 48 48s-22 48-48 48h-56L56 144V96C34 100 18 92 18 80Z" fill="url(#pointerBody)" stroke="#f8d34d" stroke-width="6" stroke-linejoin="round" />
+  <circle cx="146" cy="78" r="48" fill="url(#pointerJewel)" stroke="#f8d34d" stroke-width="6" />
+  <path d="M172 42c-42 28-68 40-112 44" fill="none" stroke="url(#pointerEdge)" stroke-width="14" stroke-linecap="round" />
+</svg>
