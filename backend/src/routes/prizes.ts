@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { PoolClient } from 'pg';
 import { mapPrizeRow, query, withTransaction } from '../db/pool';
 import { prizeInputSchema } from '../utils/validation';
+import { requireAuth } from './auth';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ router.get('/', async (_req, res, next) => {
   }
 });
 
-router.post('/', async (req, res, next) => {
+router.post('/', requireAuth, async (req, res, next) => {
   try {
     const parsed = prizeInputSchema.parse(req.body);
     const { rows } = await query(
@@ -29,7 +30,7 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requireAuth, async (req, res, next) => {
   try {
     const parsed = prizeInputSchema.partial({ won: true, sortIndex: true }).parse(req.body);
     const imageProvided = Object.prototype.hasOwnProperty.call(req.body, 'image');
@@ -70,7 +71,7 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireAuth, async (req, res, next) => {
   try {
     const { rowCount } = await query('DELETE FROM prizes WHERE id = $1', [req.params.id]);
     if (rowCount === 0) {
@@ -113,7 +114,7 @@ router.post('/:id/win', async (req, res, next) => {
   }
 });
 
-router.post('/reorder', async (req, res, next) => {
+router.post('/reorder', requireAuth, async (req, res, next) => {
   const updates: Array<{ id: string; sortIndex: number }> = req.body?.order;
   if (!Array.isArray(updates) || updates.some(update => typeof update.id !== 'string' || typeof update.sortIndex !== 'number')) {
     res.status(400).json({ message: 'Invalid order payload' });

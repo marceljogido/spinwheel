@@ -12,6 +12,14 @@ type PrizePayload = {
   sortIndex?: number;
 };
 
+const withAuthHeader = (token?: string): HeadersInit => {
+  return token
+    ? {
+        Authorization: `Bearer ${token}`
+      }
+    : {};
+};
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const text = await response.text();
@@ -28,10 +36,13 @@ export async function listPrizes(): Promise<Prize[]> {
   return data.prizes;
 }
 
-export async function createPrize(payload: PrizePayload): Promise<Prize> {
+export async function createPrize(payload: PrizePayload, token?: string): Promise<Prize> {
   const response = await fetch(`${API_BASE_URL}/prizes`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...withAuthHeader(token)
+    },
     credentials: 'include',
     body: JSON.stringify(payload)
   });
@@ -39,10 +50,13 @@ export async function createPrize(payload: PrizePayload): Promise<Prize> {
   return data.prize;
 }
 
-export async function updatePrize(id: string, payload: Partial<PrizePayload>): Promise<Prize> {
+export async function updatePrize(id: string, payload: Partial<PrizePayload>, token?: string): Promise<Prize> {
   const response = await fetch(`${API_BASE_URL}/prizes/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...withAuthHeader(token)
+    },
     credentials: 'include',
     body: JSON.stringify(payload)
   });
@@ -50,10 +64,13 @@ export async function updatePrize(id: string, payload: Partial<PrizePayload>): P
   return data.prize;
 }
 
-export async function deletePrize(id: string): Promise<void> {
+export async function deletePrize(id: string, token?: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/prizes/${id}`, {
     method: 'DELETE',
-    credentials: 'include'
+    credentials: 'include',
+    headers: {
+      ...withAuthHeader(token)
+    }
   });
   if (!response.ok && response.status !== 204) {
     throw new Error(await response.text());
@@ -69,10 +86,13 @@ export async function recordPrizeWin(id: string): Promise<Prize> {
   return data.prize;
 }
 
-export async function reorderPrizeSegments(order: Array<{ id: string; sortIndex: number }>): Promise<Prize[]> {
+export async function reorderPrizeSegments(order: Array<{ id: string; sortIndex: number }>, token?: string): Promise<Prize[]> {
   const response = await fetch(`${API_BASE_URL}/prizes/reorder`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...withAuthHeader(token)
+    },
     credentials: 'include',
     body: JSON.stringify({ order })
   });

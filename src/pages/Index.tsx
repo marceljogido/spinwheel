@@ -1,12 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import { SpinWheel } from '@/components/SpinWheel';
 import { AdminPanel } from '@/components/AdminPanel';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAudio } from '@/contexts/AudioContext';
 import { Settings, Users, Crown, Sparkles, Gamepad2, Shield, Volume2, VolumeX, Music, Play, Pause } from 'lucide-react';
 import type { Prize } from '@/types/prize';
 import { listPrizes, recordPrizeWin } from '@/lib/api/prizes';
+import { login, logout, fetchProfile } from '@/lib/api/auth';
+import type { AuthSession } from '@/types/auth';
 
 interface WheelConfig {
   centerText: string;
@@ -89,6 +95,8 @@ const fallbackPrizes: Prize[] = [
   }
 ];
 
+const AUTH_STORAGE_KEY = 'spinwheel-admin-session';
+
 const Index = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('menu');
   const [totalSpins, setTotalSpins] = useState(0);
@@ -98,6 +106,90 @@ const Index = () => {
   const [prizes, setPrizes] = useState<Prize[]>(fallbackPrizes);
   const [isLoadingPrizes, setIsLoadingPrizes] = useState(false);
   const [prizeSyncError, setPrizeSyncError] = useState<string | null>(null);
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isVerifyingSession, setIsVerifyingSession] = useState(false);
+  const [hasLoadedSession, setHasLoadedSession] = useState(false);
+
+  const lastVerifiedTokenRef = useRef<string | null>(null);
+
+  const persistSession = useCallback((session: AuthSession) => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    }
+    lastVerifiedTokenRef.current = session.token;
+    setAuthSession(session);
+  }, []);
+
+  const clearAuthSession = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+    lastVerifiedTokenRef.current = null;
+    setAuthSession(null);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as AuthSession;
+        setAuthSession(parsed);
+      } catch (error) {
+        console.warn('Failed to parse stored admin session', error);
+        window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+    }
+    setHasLoadedSession(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedSession || !authSession?.token) {
+      return;
+    }
+    if (lastVerifiedTokenRef.current === authSession.token) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const verifySession = async () => {
+      setIsVerifyingSession(true);
+      try {
+        const profile = await fetchProfile(authSession.token);
+        if (cancelled) {
+          return;
+        }
+        persistSession({
+          token: authSession.token,
+          username: profile.username,
+          expiresAt: profile.expiresAt
+        });
+        setAuthError(null);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        console.warn('Failed to validate admin session', error);
+        clearAuthSession();
+      } finally {
+        if (!cancelled) {
+          setIsVerifyingSession(false);
+        }
+      }
+    };
+
+    verifySession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authSession?.token, hasLoadedSession, clearAuthSession, persistSession]);
 
   useEffect(() => {
     let ignore = false;
@@ -151,6 +243,62 @@ const Index = () => {
     setWheelConfig(newConfig);
   };
 
+  const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!loginForm.username.trim() || !loginForm.password.trim()) {
+      setAuthError('Masukkan username dan password admin.');
+      return;
+    }
+
+    setIsAuthenticating(true);
+    setAuthError(null);
+
+    try {
+      const credentials = {
+        username: loginForm.username.trim(),
+        password: loginForm.password
+      };
+
+      const result = await login(credentials.username, credentials.password);
+      const profile = await fetchProfile(result.token);
+
+      const session: AuthSession = {
+        token: result.token,
+        username: profile.username,
+        expiresAt: profile.expiresAt
+      };
+
+      persistSession(session);
+      setLoginForm({ username: '', password: '' });
+
+      try {
+        const remotePrizes = await listPrizes();
+        if (remotePrizes.length > 0) {
+          setPrizes(remotePrizes);
+        }
+      } catch (error) {
+        console.warn('Logged in but failed to refresh prizes from API', error);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal masuk ke server.';
+      setAuthError(message);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (authSession?.token) {
+      try {
+        await logout(authSession.token);
+      } catch (error) {
+        console.warn('Failed to logout cleanly', error);
+      }
+    }
+    clearAuthSession();
+    setAuthError(null);
+    setViewMode('menu');
+  };
 
 
   const availablePrizes = prizes.filter(prize => prize.won < prize.quota);
@@ -159,6 +307,8 @@ const Index = () => {
   const navigateTo = (mode: ViewMode) => {
     setViewMode(mode);
   };
+
+  const isAuthenticated = Boolean(authSession);
 
   const renderMenu = () => (
     <div className="min-h-screen bg-background relative overflow-hidden animate-fade-in">
@@ -187,6 +337,17 @@ const Index = () => {
                   Choose your experience
                 </p>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {isAuthenticated ? (
+                <Badge variant="outline" className="text-xs sm:text-sm">
+                  Masuk sebagai {authSession?.username}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs sm:text-sm text-muted-foreground">
+                  Admin belum login
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -355,6 +516,17 @@ const Index = () => {
                 <span className="hidden sm:inline">Menu</span>
               </Button>
             </div>
+            <div className="flex items-center gap-2">
+              {isAuthenticated ? (
+                <Badge variant="outline" className="text-xs sm:text-sm">
+                  Masuk sebagai {authSession?.username}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs sm:text-sm text-muted-foreground">
+                  Admin belum login
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -401,60 +573,164 @@ const Index = () => {
     </div>
   );
 
-  const renderAdminPanel = () => (
-    <div className="min-h-screen bg-background relative overflow-hidden animate-slide-in-left">
-      {/* Background Effects */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
-      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,215,0,0.1),transparent_50%)]"></div>
-      
-      {/* Header */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm relative z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 group">
-              <div className="relative">
-                <img 
-                  src="/digioh-logo.ico" 
-                  alt="DigiOH Logo" 
-                  className="w-8 h-8 group-hover:scale-110 transition-transform duration-200"
-                />
-                <Sparkles className="absolute -top-1 -right-1 w-4 h-4 text-accent animate-pulse" />
-              </div>
-              <div>
-                <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                  Prize Wheel Extravaganza
-                </h1>
-                <p className="text-muted-foreground text-xs md:text-sm">
-                  Admin Panel - Event Management
-                </p>
+  const renderAdminPanel = () => {
+    if (!isAuthenticated) {
+      return (
+        <div className="min-h-screen bg-background relative overflow-hidden animate-slide-in-left">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,215,0,0.1),transparent_50%)]"></div>
+
+          <header className="border-b border-border bg-card/80 backdrop-blur-sm relative z-10">
+            <div className="container mx-auto px-4 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 group">
+                  <div className="relative">
+                    <img
+                      src="/digioh-logo.ico"
+                      alt="DigiOH Logo"
+                      className="w-8 h-8 group-hover:scale-110 transition-transform duration-200"
+                    />
+                    <Sparkles className="absolute -top-1 -right-1 w-4 h-4 text-accent animate-pulse" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                      Prize Wheel Extravaganza
+                    </h1>
+                    <p className="text-muted-foreground text-xs md:text-sm">
+                      Login Admin Diperlukan
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  onClick={() => navigateTo('menu')}
+                  className="flex items-center gap-2 text-xs md:text-sm"
+                  size="sm"
+                >
+                  <Settings className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">Menu</span>
+                </Button>
               </div>
             </div>
-            
-            <Button
-              variant="outline"
-              onClick={() => navigateTo('menu')}
-              className="flex items-center gap-2 text-xs md:text-sm"
-              size="sm"
-            >
-              <Settings className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Menu</span>
-            </Button>
-          </div>
-        </div>
-      </header>
+          </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 md:py-8 relative z-10">
-        <AdminPanel 
-          prizes={prizes}
-          onPrizesUpdate={handlePrizesUpdate}
-          totalSpins={totalSpins}
-          wheelConfig={wheelConfig}
-          onWheelConfigUpdate={handleWheelConfigUpdate}
-        />
-      </main>
-    </div>
-  );
+          <main className="container mx-auto px-4 py-8 relative z-10 flex items-center justify-center">
+            <Card className="w-full max-w-md shadow-xl border-border/80 bg-card/90 backdrop-blur">
+              <CardHeader>
+                <CardTitle className="text-2xl font-semibold">Masuk ke Admin Panel</CardTitle>
+                <p className="text-sm text-muted-foreground">Gunakan kredensial yang dikonfigurasi di environment backend.</p>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-username">Username</Label>
+                    <Input
+                      id="admin-username"
+                      value={loginForm.username}
+                      onChange={event => {
+                        setLoginForm(prev => ({ ...prev, username: event.target.value }));
+                        setAuthError(null);
+                      }}
+                      autoComplete="username"
+                      placeholder="admin"
+                      disabled={isAuthenticating}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-password">Password</Label>
+                    <Input
+                      id="admin-password"
+                      type="password"
+                      value={loginForm.password}
+                      onChange={event => {
+                        setLoginForm(prev => ({ ...prev, password: event.target.value }));
+                        setAuthError(null);
+                      }}
+                      autoComplete="current-password"
+                      placeholder="********"
+                      disabled={isAuthenticating}
+                    />
+                  </div>
+                  {authError && (
+                    <p className="text-sm text-destructive">{authError}</p>
+                  )}
+                  {isVerifyingSession && !authError && (
+                    <p className="text-xs text-muted-foreground">Memeriksa sesi tersimpan…</p>
+                  )}
+                  <Button type="submit" className="w-full" disabled={isAuthenticating}>
+                    {isAuthenticating ? 'Memproses…' : 'Masuk'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-background relative overflow-hidden animate-slide-in-left">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,215,0,0.1),transparent_50%)]"></div>
+
+        <header className="border-b border-border bg-card/80 backdrop-blur-sm relative z-10">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 group">
+                <div className="relative">
+                  <img
+                    src="/digioh-logo.ico"
+                    alt="DigiOH Logo"
+                    className="w-8 h-8 group-hover:scale-110 transition-transform duration-200"
+                  />
+                  <Sparkles className="absolute -top-1 -right-1 w-4 h-4 text-accent animate-pulse" />
+                </div>
+                <div>
+                  <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                    Prize Wheel Extravaganza
+                  </h1>
+                  <p className="text-muted-foreground text-xs md:text-sm">
+                    Admin Panel - Event Management
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs md:text-sm">{authSession?.username}</Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                >
+                  Keluar
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigateTo('menu')}
+                  className="flex items-center gap-2 text-xs md:text-sm"
+                  size="sm"
+                >
+                  <Settings className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">Menu</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="container mx-auto px-4 py-4 md:py-8 relative z-10">
+          <AdminPanel
+            prizes={prizes}
+            onPrizesUpdate={handlePrizesUpdate}
+            totalSpins={totalSpins}
+            wheelConfig={wheelConfig}
+            onWheelConfigUpdate={handleWheelConfigUpdate}
+          />
+        </main>
+      </div>
+    );
+  };
 
   // Render based on view mode
   switch (viewMode) {

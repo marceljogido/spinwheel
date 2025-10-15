@@ -27,6 +27,8 @@ npm run dev
 
 Atur variabel lingkungan di `.env` (frontend) dan `backend/.env` agar `VITE_API_URL` menunjuk ke port API (default `http://localhost:4000`).
 
+> **Catatan:** Panel admin kini membutuhkan login. Gunakan `ADMIN_USERNAME` dan `ADMIN_PASSWORD` yang Anda set di `backend/.env` untuk masuk dari antarmuka frontend.
+
 ### **Production Build:**
 ```bash
 npm install
