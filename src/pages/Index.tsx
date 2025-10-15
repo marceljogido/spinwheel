@@ -160,27 +160,21 @@ const Index = () => {
   return (
     <div className="relative min-h-[100svh] overflow-hidden bg-[#f6f7fb] text-[#0f3a64]">
       <img
-        src="/assets/movin-background.svg"
+        src="/assets/WOF_Background.png"
         alt="Latar belakang Bank Mandiri Taspen"
         className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
       />
 
       <div className="relative z-10 flex min-h-[100svh] flex-col items-center px-4 pb-10 pt-10 text-[#0f3a64] sm:px-6 md:pb-12 md:pt-12">
-        <header className="w-full max-w-4xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.6em] text-[#1f4f9b]/80">Yuk Kenalan Sama Movin!</p>
-          <h1 className="mt-3 text-balance text-3xl font-black leading-tight text-[#0f3a64] sm:text-4xl md:text-[2.75rem]">
-            Mainkan games ini &amp; bawalah hadiah menariknya!
-          </h1>
-        </header>
 
-        <main className="mt-8 flex w-full flex-1 flex-col items-center justify-center gap-10 sm:gap-12">
+        <main className="-mb-36 flex w-full flex-1 flex-col items-center justify-center gap-10 sm:gap-12">
           <SpinWheel
             prizes={activePrizes}
             onPrizeWon={handlePrizeWon}
             wheelConfig={wheelConfig}
           />
 
-          <div className="w-full max-w-xl text-center">
+          <div className="w-full max-w-xl text-center -mt-8">
             <p className="mx-auto max-w-md rounded-[28px] bg-white/85 px-6 py-4 text-base font-semibold uppercase tracking-[0.4em] text-[#1f4f9b] shadow-[0_16px_40px_rgba(15,58,100,0.18)] backdrop-blur">
               {lastPrizeName ? `[ ${lastPrizeName} ]` : '[ Putar roda untuk melihat hadiahmu ]'}
             </p>
@@ -193,12 +187,6 @@ const Index = () => {
             </div>
           )}
         </main>
-
-        <footer className="mt-10 flex w-full max-w-4xl justify-center">
-          <span className="rounded-full bg-white/70 px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-[#0f3a64] backdrop-blur">
-            Total Spin: {totalSpins}
-          </span>
-        </footer>
       </div>
     </div>
   );

@@ -421,7 +421,7 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
           style={{
             width: `${Math.max(wheelSize * 0.26, 110)}px`,
             height: `${Math.max(wheelSize * 0.26, 110)}px`,
-            backgroundImage: "url('/assets/movin-center.svg')",
+            backgroundImage: "url('/assets/WOF_Button.png')",
             backgroundSize: 'contain',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
@@ -443,12 +443,12 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
 
         <div
           className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2"
-          style={{ top: `-${Math.max(wheelSize * 0.14, 52)}px` }}
+          style={{ top: `-${Math.max(wheelSize * 0.1, 76)}px` }}
         >
           <img
-            src="/assets/movin-pointer.svg"
+            src="/assets/WOF_Jarum.png"
             alt="Penunjuk roda"
-            className={`select-none transition-transform duration-300 ${showBounce ? 'animate-bounce' : ''}`}
+            className={`select-none transition-transform duration-300 -rotate-90 ${showBounce ? 'animate-bounce' : ''}`}
             style={{
               width: `${Math.max(wheelSize * 0.34, 120)}px`,
               filter: 'drop-shadow(0 18px 25px rgba(15, 58, 100, 0.45))',

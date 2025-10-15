@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
+import { findAdminByUsername, verifyAdminPassword } from '../db/admins';
 
 type SessionRecord = {
   token: string;
@@ -13,12 +14,6 @@ const router = Router();
 const sessions = new Map<string, SessionRecord>();
 
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS ?? 1000 * 60 * 60 * 8);
-
-const getCredentials = () => {
-  const username = process.env.ADMIN_USERNAME ?? 'admin';
-  const password = process.env.ADMIN_PASSWORD ?? 'admin123';
-  return { username, password };
-};
 
 const getTokenFromHeader = (req: Request): string | null => {
   const header = req.headers.authorization;
@@ -63,7 +58,7 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
   next();
 };
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { username, password } = req.body ?? {};
 
   if (typeof username !== 'string' || typeof password !== 'string') {
@@ -71,10 +66,15 @@ router.post('/login', (req, res) => {
     return;
   }
 
-  const expected = getCredentials();
-
-  if (username !== expected.username || password !== expected.password) {
-    res.status(401).json({ message: 'Invalid username or password' });
+  try {
+    const admin = await findAdminByUsername(username);
+    if (!admin || !verifyAdminPassword(admin, password)) {
+      res.status(401).json({ message: 'Invalid username or password' });
+      return;
+    }
+  } catch (error) {
+    console.error('Failed to authenticate admin', error);
+    res.status(500).json({ message: 'Failed to authenticate' });
     return;
   }
 
