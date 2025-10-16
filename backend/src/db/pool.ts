@@ -52,6 +52,10 @@ export const healthcheck = async (): Promise<boolean> => {
   }
 };
 
+export const closePool = async (): Promise<void> => {
+  await pool.end();
+};
+
 export type DbPrizeRow = {
   id: string;
   name: string;

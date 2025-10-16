@@ -63,3 +63,11 @@ export const ensureAdminExists = async (username: string, password: string): Pro
 export const verifyAdminPassword = (admin: AdminRecord, password: string): boolean => {
   return verifyPassword(password, { hash: admin.passwordHash, salt: admin.passwordSalt });
 };
+
+export const updateAdminPassword = async (adminId: string, newPassword: string): Promise<void> => {
+  const digest = hashPassword(newPassword);
+  await query(
+    'UPDATE admins SET password_hash = $1, password_salt = $2 WHERE id = $3',
+    [digest.hash, digest.salt, adminId]
+  );
+};
