@@ -7,9 +7,102 @@ interface SpinWheelProps {
   prizes: Prize[];
   onPrizeWon: (prize: Prize) => void;
   wheelConfig?: WheelConfig;
+  onActivePrizeChange?: (prize: Prize | null) => void;
 }
 
 const MOVIN_SEGMENT_COLORS = ['#1f4f9b', '#f5c33f', '#f2f2f2', '#cfd3dc', '#2c6eb6'];
+
+const NEWTON_ITERATIONS = 4;
+const NEWTON_MIN_SLOPE = 0.001;
+const SUBDIVISION_PRECISION = 0.0000001;
+const SUBDIVISION_MAX_ITERATIONS = 10;
+const SAMPLE_SIZE = 11;
+
+const calcBezier = (t: number, a1: number, a2: number) => ((1 - 3 * a2 + 3 * a1) * t + (3 * a2 - 6 * a1)) * t * t + 3 * a1 * t;
+const getSlope = (t: number, a1: number, a2: number) => 3 * (1 - 3 * a2 + 3 * a1) * t * t + 2 * (3 * a2 - 6 * a1) * t + 3 * a1;
+
+const binarySubdivide = (x: number, a: number, b: number, mX1: number, mX2: number) => {
+  let currentX;
+  let currentT;
+  let i = 0;
+  do {
+    currentT = a + (b - a) / 2;
+    currentX = calcBezier(currentT, mX1, mX2) - x;
+    if (currentX > 0) {
+      b = currentT;
+    } else {
+      a = currentT;
+    }
+  } while (Math.abs(currentX) > SUBDIVISION_PRECISION && ++i < SUBDIVISION_MAX_ITERATIONS);
+  return currentT;
+};
+
+const newtonRaphsonIterate = (x: number, guessT: number, mX1: number, mX2: number) => {
+  for (let i = 0; i < NEWTON_ITERATIONS; i++) {
+    const currentSlope = getSlope(guessT, mX1, mX2);
+    if (currentSlope === 0) return guessT;
+    const currentX = calcBezier(guessT, mX1, mX2) - x;
+    guessT -= currentX / currentSlope;
+  }
+  return guessT;
+};
+
+const createCubicBezier = (mX1: number, mY1: number, mX2: number, mY2: number) => {
+  if (mX1 < 0 || mX1 > 1 || mX2 < 0 || mX2 > 1) {
+    throw new Error('cubic-bezier x values must be in [0, 1] range');
+  }
+
+  if (mX1 === mY1 && mX2 === mY2) {
+    return (t: number) => t;
+  }
+
+  const sampleStep = 1 / (SAMPLE_SIZE - 1);
+  const sampleValues = new Float32Array(SAMPLE_SIZE);
+  for (let i = 0; i < SAMPLE_SIZE; i++) {
+    sampleValues[i] = calcBezier(i * sampleStep, mX1, mX2);
+  }
+
+  const getTForX = (x: number) => {
+    let intervalStart = 0;
+    let currentSample = 1;
+    const lastSample = SAMPLE_SIZE - 1;
+
+    for (; currentSample !== lastSample && sampleValues[currentSample] <= x; currentSample++) {
+      intervalStart += sampleStep;
+    }
+    currentSample--;
+
+    const dist = (x - sampleValues[currentSample]) / (sampleValues[currentSample + 1] - sampleValues[currentSample]);
+    let guessForT = intervalStart + dist * sampleStep;
+
+    const initialSlope = getSlope(guessForT, mX1, mX2);
+    if (initialSlope >= NEWTON_MIN_SLOPE) {
+      return newtonRaphsonIterate(x, guessForT, mX1, mX2);
+    }
+    if (initialSlope === 0) {
+      return guessForT;
+    }
+    return binarySubdivide(x, intervalStart, intervalStart + sampleStep, mX1, mX2);
+  };
+
+  return (t: number) => calcBezier(getTForX(t), mY1, mY2);
+};
+
+const easeOutCubic = createCubicBezier(0.23, 1, 0.32, 1);
+
+const normalizeDegrees = (value: number) => {
+  const normalized = value % 360;
+  return normalized < 0 ? normalized + 360 : normalized;
+};
+
+const getPointerIndexFromRotation = (rotation: number, segmentsLength: number) => {
+  if (segmentsLength <= 0) return -1;
+  const segmentAngle = 360 / segmentsLength;
+  const normalizedRotation = normalizeDegrees(rotation);
+  const pointerAngle = (360 - normalizedRotation) % 360;
+  const index = Math.floor(pointerAngle / segmentAngle);
+  return Math.min(Math.max(index, 0), segmentsLength - 1);
+};
 
 const getSegmentTextColor = (hexColor: string) => {
   const hex = hexColor.replace('#', '');
@@ -48,6 +141,19 @@ function PrizePopup({ prize, onClose }: { prize: Prize | null; onClose: () => vo
 
   if (!prize) return null;
 
+  const losingKeywords = ['coba lagi', 'anda belum beruntung', 'belum beruntung', 'tidak berhasil'];
+  const isLosingPrize = losingKeywords.some(keyword => prize.name.toLowerCase().includes(keyword));
+
+  const headingText = isLosingPrize ? 'Sayang Sekali!' : 'Selamat!';
+  const messageText = isLosingPrize ? 'Hadiah belum berpihak kali ini. Putar roda lagi untuk kesempatan berikutnya.' : 'Kamu mendapatkan hadiah:';
+  const actionLabel = isLosingPrize ? 'Spin Lagi' : 'Tutup';
+  const gradientClass = isLosingPrize ? 'from-[#24324f] to-[#1a233b]' : 'from-[#1f4f9b] to-[#2c6eb6]';
+  const highlightClass = isLosingPrize
+    ? 'mt-2 rounded-full bg-white/10 px-6 py-2 text-xl font-semibold uppercase tracking-wide text-white shadow-[0_6px_18px_rgba(0,0,0,0.35)]'
+    : 'mt-1 text-3xl font-black uppercase tracking-wide text-[#f5c33f]';
+  const buttonClasses = `mt-2 rounded-full px-8 py-3 text-base font-semibold text-[#1f4f9b] shadow-[0_12px_30px_rgba(15,58,100,0.35)] transition hover:bg-white ${isLosingPrize ? 'bg-white/85' : 'bg-white/90'}`;
+  const highlightText = isLosingPrize ? 'Tetap Semangat!' : prize.name;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
       {particles.map(particle => (
@@ -65,7 +171,7 @@ function PrizePopup({ prize, onClose }: { prize: Prize | null; onClose: () => vo
         />
       ))}
 
-      <div className="relative min-w-[280px] max-w-[90vw] rounded-3xl bg-gradient-to-br from-[#1f4f9b] to-[#2c6eb6] p-8 text-center shadow-[0_25px_60px_rgba(15,58,100,0.45)] animate-scale-in">
+      <div className={`relative min-w-[280px] max-w-[90vw] rounded-3xl bg-gradient-to-br ${gradientClass} p-8 text-center shadow-[0_25px_60px_rgba(15,58,100,0.45)] animate-scale-in`}>
         <div className="relative z-10 flex flex-col items-center gap-4">
           {prize.image && (
             <img
@@ -74,16 +180,23 @@ function PrizePopup({ prize, onClose }: { prize: Prize | null; onClose: () => vo
               className="h-24 w-24 rounded-full border-4 border-white/80 shadow-lg animate-prize-glow"
             />
           )}
-          <h2 className="text-3xl font-extrabold text-white drop-shadow-lg">Selamat!</h2>
-          <p className="text-lg font-medium text-white/90">Kamu mendapatkan hadiah:</p>
-          <p className="text-3xl font-black tracking-wide text-[#f5c33f] drop-shadow-[0_8px_18px_rgba(0,0,0,0.35)] animate-prize-glow">
-            {prize.name}
-          </p>
+          <h2 className="text-3xl font-extrabold text-white drop-shadow-lg">{headingText}</h2>
+          <p className="text-lg font-medium text-white/85">{messageText}</p>
+          {highlightText && (
+            <p
+              className={highlightClass}
+              style={{
+                textShadow: isLosingPrize ? '0 10px 24px rgba(0,0,0,0.4)' : '0 8px 18px rgba(0,0,0,0.35)',
+              }}
+            >
+              {highlightText}
+            </p>
+          )}
           <Button
             onClick={onClose}
-            className="mt-2 rounded-full bg-white/90 px-8 py-3 text-base font-semibold text-[#1f4f9b] shadow-[0_12px_30px_rgba(15,58,100,0.35)] transition hover:bg-white"
+            className={buttonClasses}
           >
-            Tutup
+            {actionLabel}
           </Button>
         </div>
       </div>
@@ -91,7 +204,7 @@ function PrizePopup({ prize, onClose }: { prize: Prize | null; onClose: () => vo
   );
 }
 
-export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) => {
+export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig, onActivePrizeChange }: SpinWheelProps) => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [currentRotation, setCurrentRotation] = useState(0);
   const [popupPrize, setPopupPrize] = useState<Prize | null>(null);
@@ -102,6 +215,10 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
 
   const spinAudioRef = useRef<HTMLAudioElement | null>(null);
   const winAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeTickerFrameRef = useRef<number | null>(null);
+  const activeTickerStartTimeRef = useRef<number | null>(null);
+  const lastActiveIndexRef = useRef<number | null>(null);
+  const hasCompletedSpinRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -125,6 +242,10 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
     return () => {
       if (spinAudioRef.current) spinAudioRef.current.pause();
       if (winAudioRef.current) winAudioRef.current.pause();
+      if (activeTickerFrameRef.current !== null) {
+        cancelAnimationFrame(activeTickerFrameRef.current);
+        activeTickerFrameRef.current = null;
+      }
     };
   }, []);
 
@@ -213,7 +334,27 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
     color: segment.color ?? MOVIN_SEGMENT_COLORS[index % MOVIN_SEGMENT_COLORS.length],
   }));
 
+  const updateActivePrizeForRotation = (rotationValue: number, segmentsSnapshot = segments) => {
+    if (!onActivePrizeChange || segmentsSnapshot.length === 0) return;
+    const pointerIndex = getPointerIndexFromRotation(rotationValue, segmentsSnapshot.length);
+    if (pointerIndex < 0 || pointerIndex >= segmentsSnapshot.length) return;
+    if (lastActiveIndexRef.current === pointerIndex) return;
+    lastActiveIndexRef.current = pointerIndex;
+    onActivePrizeChange(segmentsSnapshot[pointerIndex].prize);
+  };
+
   const availablePrizes = prizes.filter(prize => prize.won < prize.quota);
+
+  useEffect(() => {
+    if (!onActivePrizeChange) return;
+    if (segments.length === 0) {
+      lastActiveIndexRef.current = null;
+      onActivePrizeChange(null);
+      return;
+    }
+    if (!hasCompletedSpinRef.current || isSpinning) return;
+    updateActivePrizeForRotation(currentRotation);
+  }, [isSpinning, currentRotation, segments, onActivePrizeChange]);
 
   const createEnhancedConfetti = () => {
     if (!config.showConfetti) return;
@@ -245,6 +386,9 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
 
   const spin = () => {
     if (isSpinning || availablePrizes.length === 0 || segments.length === 0) return;
+
+    const segmentsSnapshot = [...segments];
+    const startRotation = currentRotation;
 
     setIsSpinning(true);
 
@@ -288,6 +432,33 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
     const prizeIndex = segments.findIndex(segment => segment.prize.id === selectedPrize.id);
     const targetAngle = prizeIndex >= 0 ? prizeIndex * segmentAngle + segmentAngle / 2 : 0;
     const adjustedRotation = finalRotation - (finalRotation % 360) + (360 - targetAngle);
+    const durationMs = spinDuration * 1000;
+    const rotationDelta = adjustedRotation - startRotation;
+
+    if (onActivePrizeChange && segmentsSnapshot.length > 0) {
+      if (activeTickerFrameRef.current !== null) {
+        cancelAnimationFrame(activeTickerFrameRef.current);
+      }
+      activeTickerStartTimeRef.current = null;
+      lastActiveIndexRef.current = null;
+      updateActivePrizeForRotation(startRotation, segmentsSnapshot);
+
+      const step = (timestamp: number) => {
+        if (activeTickerStartTimeRef.current === null) {
+          activeTickerStartTimeRef.current = timestamp;
+        }
+        const elapsed = timestamp - activeTickerStartTimeRef.current;
+        const progress = Math.min(elapsed / durationMs, 1);
+        const easedProgress = easeOutCubic(progress);
+        const currentRotationValue = startRotation + rotationDelta * easedProgress;
+        updateActivePrizeForRotation(currentRotationValue, segmentsSnapshot);
+        if (progress < 1) {
+          activeTickerFrameRef.current = requestAnimationFrame(step);
+        }
+      };
+
+      activeTickerFrameRef.current = requestAnimationFrame(step);
+    }
 
     if (wheelRef.current) {
       wheelRef.current.style.setProperty('--final-rotation', `${adjustedRotation}deg`);
@@ -312,6 +483,17 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
       setIsSpinning(false);
       playWinSound();
       onPrizeWon(selectedPrize);
+      hasCompletedSpinRef.current = true;
+      if (activeTickerFrameRef.current !== null) {
+        cancelAnimationFrame(activeTickerFrameRef.current);
+        activeTickerFrameRef.current = null;
+      }
+      activeTickerStartTimeRef.current = null;
+      updateActivePrizeForRotation(adjustedRotation, segmentsSnapshot);
+      if (onActivePrizeChange) {
+        lastActiveIndexRef.current = segmentsSnapshot.findIndex(segment => segment.prize.id === selectedPrize.id);
+        onActivePrizeChange(selectedPrize);
+      }
 
       if (config.spinAnimation === 'bounce') {
         setShowBounce(true);
@@ -320,7 +502,7 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
 
       createEnhancedConfetti();
       setPopupPrize(selectedPrize);
-    }, spinDuration * 1000);
+    }, durationMs);
   };
 
   const segmentCount = segments.length;
@@ -361,6 +543,22 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
             const rotation = index * segmentAngle;
             const isAvailable = prize.won < prize.quota;
             const textColor = getSegmentTextColor(color);
+            const labelOffsetPx = Math.min(Math.max(wheelSize * 0.06 + 10, 22), wheelSize * 0.14);
+
+            let basePercent = -56;
+            if (wheelSize < 260) {
+              basePercent = -46;
+            } else if (wheelSize < 320) {
+              basePercent = -48;
+            } else if (wheelSize < 380) {
+              basePercent = -52;
+            } else if (wheelSize < 460) {
+              basePercent = -54;
+            }
+
+            const labelFontSize = Math.min(Math.max(wheelSize * fontScale, 11.5), 18.5);
+            const labelMaxWidth = Math.min(Math.max(wheelSize * 0.3, 90), 168);
+            const lineHeight = segments.length <= 6 ? (wheelSize < 360 ? 1.16 : 1.12) : 1.18;
 
             return (
               <div
@@ -377,9 +575,7 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
                       isAvailable ? 'opacity-100' : 'opacity-60'
                     } ${isSpinning ? 'animate-pulse' : ''}`}
                     style={{
-                      marginTop: prize.image
-                        ? `calc(-50% + ${Math.max(wheelSize * 0.045, 16)}px)`
-                        : `calc(-50% + ${Math.max(wheelSize * 0.04, 14)}px)`,
+                      marginTop: `calc(${basePercent}% + ${labelOffsetPx}px)`,
                     }}
                   >
                     {prize.image && config.showImages && (
@@ -396,9 +592,12 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
                     <span
                       className="font-bold uppercase tracking-tight drop-shadow-sm"
                       style={{
-                        fontSize: `${Math.max(wheelSize * fontScale, 13)}px`,
-                        maxWidth: `${wheelSize * 0.4}px`,
+                        fontSize: `${labelFontSize}px`,
+                        maxWidth: `${labelMaxWidth}px`,
                         color: textColor,
+                        lineHeight,
+                        wordBreak: 'break-word',
+                        whiteSpace: 'normal',
                         textShadow:
                           textColor === '#ffffff'
                             ? '0 0 12px rgba(13,61,117,0.45)'
@@ -417,7 +616,7 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
         <button
           onClick={spin}
           disabled={isSpinning || availablePrizes.length === 0}
-          className="absolute top-1/2 left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border-none outline-none focus-visible:ring-4 focus-visible:ring-[#f5c33f]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white shadow-[0_18px_35px_rgba(15,58,100,0.35)] transition-transform duration-200 ease-out hover:scale-[1.04] disabled:cursor-not-allowed disabled:hover:scale-100"
+          className="absolute top-1/2 left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border-none outline-none focus-visible:ring-4 focus-visible:ring-[#f5c33f]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white transition-transform duration-200 ease-out hover:scale-[1.04] disabled:cursor-not-allowed disabled:hover:scale-100"
           style={{
             width: `${Math.max(wheelSize * 0.26, 110)}px`,
             height: `${Math.max(wheelSize * 0.26, 110)}px`,
@@ -430,15 +629,6 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig }: SpinWheelProps) =
           aria-label="Putar roda"
         >
           <span className="sr-only">{config.centerText}</span>
-          {isSpinning && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[#f7a21d] animate-bounce" />
-                <span className="h-2 w-2 rounded-full bg-[#f7a21d] animate-bounce [animation-delay:0.1s]" />
-                <span className="h-2 w-2 rounded-full bg-[#f7a21d] animate-bounce [animation-delay:0.2s]" />
-              </div>
-            </div>
-          )}
         </button>
 
         <div

@@ -19,6 +19,7 @@ const Index = () => {
   const [prizeSyncError, setPrizeSyncError] = useState<string | null>(null);
   const [fetchedRemotePrizes, setFetchedRemotePrizes] = useState(false);
   const [lastPrizeName, setLastPrizeName] = useState<string | null>(null);
+  const [activePrizeName, setActivePrizeName] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -138,6 +139,7 @@ const Index = () => {
       return updated;
     });
     setLastPrizeName(prize.name);
+    setActivePrizeName(null);
 
     if (!fetchedRemotePrizes) {
       return;
@@ -172,11 +174,12 @@ const Index = () => {
             prizes={activePrizes}
             onPrizeWon={handlePrizeWon}
             wheelConfig={wheelConfig}
+            onActivePrizeChange={prize => setActivePrizeName(prize ? prize.name : null)}
           />
 
           <div className="w-full max-w-xl text-center -mt-8">
-            <p className="mx-auto max-w-md rounded-[28px] bg-white/85 px-6 py-4 text-base font-semibold uppercase tracking-[0.4em] text-[#1f4f9b] shadow-[0_16px_40px_rgba(15,58,100,0.18)] backdrop-blur">
-              {lastPrizeName ? `[ ${lastPrizeName} ]` : '[ Putar roda untuk melihat hadiahmu ]'}
+            <p className="mx-auto flex min-w-[260px] max-w-md items-center justify-center rounded-[28px] bg-white/85 px-6 py-4 text-center text-base font-semibold uppercase tracking-[0.28em] text-[#1f4f9b] shadow-[0_16px_40px_rgba(15,58,100,0.18)] backdrop-blur whitespace-nowrap sm:tracking-[0.34em] md:tracking-[0.4em]">
+              {activePrizeName ?? lastPrizeName ? `[ ${activePrizeName ?? lastPrizeName} ]` : '[ Putar roda untuk melihat hadiahmu ]'}
             </p>
           </div>
 
