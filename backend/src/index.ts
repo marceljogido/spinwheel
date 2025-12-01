@@ -1,6 +1,8 @@
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import { healthcheck } from './db/pool';
 import { ensureDatabase } from './db/setup';
 import { authRouter } from './routes/auth';
@@ -14,6 +16,23 @@ const allowedOrigins = process.env.CLIENT_ORIGIN?.split(',').map(origin => origi
 app.use(helmet());
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
+
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true
+  }
+});
+
+io.on('connection', socket => {
+  console.log('Client connected to realtime channel', socket.id);
+  socket.on('disconnect', () => {
+    console.log('Client disconnected from realtime channel', socket.id);
+  });
+});
+
+app.set('socketio', io);
 
 app.get('/', (_req, res) => {
   res.json({
@@ -38,7 +57,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 const start = async () => {
   try {
     await ensureDatabase();
-    app.listen(port, () => {
+    httpServer.listen(port, () => {
       console.log(`Spinwheel API listening on http://localhost:${port}`);
     });
   } catch (error) {

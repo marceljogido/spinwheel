@@ -2,12 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'ESBuild Neutral';
+  src: url('./fonts/ESBuild-Neutral/ESBuildNeutral-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ESBuild Neutral';
+  src: url('./fonts/ESBuild-Neutral/ESBuildNeutral-Italic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ESBuild Neutral';
+  src: url('./fonts/ESBuild-Neutral/ESBuildNeutral-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ESBuild Neutral';
+  src: url('./fonts/ESBuild-Neutral/ESBuildNeutral-MediumItalic.otf') format('opentype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ESBuild Neutral';
+  src: url('./fonts/ESBuild-Neutral/ESBuildNeutral-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ESBuild Neutral';
+  src: url('./fonts/ESBuild-Neutral/ESBuildNeutral-SemiBoldItalic.otf') format('opentype');
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ESBuild Neutral';
+  src: url('./fonts/ESBuild-Neutral/ESBuildNeutral-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ESBuild Neutral';
+  src: url('./fonts/ESBuild-Neutral/ESBuildNeutral-BoldItalic.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ESBuild FullBauhaus';
+  src: url('./fonts/ESBuild-FullBauhaus/ESBuildFullBauhaus-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ESBuild FullBauhaus';
+  src: url('./fonts/ESBuild-FullBauhaus/ESBuildFullBauhaus-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ESBuild FullBauhaus';
+  src: url('./fonts/ESBuild-FullBauhaus/ESBuildFullBauhaus-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ESBuild FullBauhaus';
+  src: url('./fonts/ESBuild-FullBauhaus/ESBuildFullBauhaus-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
+    --font-sans: 'ESBuild Neutral', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-display: 'ESBuild FullBauhaus', 'ESBuild Neutral', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     /* Prize Wheel Design System - Carnival/Game Show Theme */
     --background: 240 15% 9%;
     --foreground: 45 100% 95%;
@@ -128,6 +226,16 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01" on, "liga" on;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: 0.08em;
   }
 }
 

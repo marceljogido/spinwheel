@@ -26,6 +26,10 @@ export default {
 			'2xl': '1536px',
 		},
 		extend: {
+			fontFamily: {
+				sans: ['"ESBuild Neutral"', 'system-ui', 'sans-serif'],
+				display: ['"ESBuild FullBauhaus"', '"ESBuild Neutral"', 'sans-serif']
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',

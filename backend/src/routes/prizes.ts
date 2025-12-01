@@ -1,10 +1,18 @@
-import { Router } from 'express';
+import { Request, Router } from 'express';
 import { PoolClient } from 'pg';
 import { mapPrizeRow, query, withTransaction } from '../db/pool';
 import { prizeInputSchema } from '../utils/validation';
 import { requireAuth } from './auth';
+import type { Server as SocketIOServer } from 'socket.io';
 
 const router = Router();
+
+const emitPrizesUpdated = (req: Request) => {
+  const io = req.app.get('socketio') as SocketIOServer | undefined;
+  if (io) {
+    io.emit('prizes_updated');
+  }
+};
 
 router.get('/', async (_req, res, next) => {
   try {
@@ -24,6 +32,7 @@ router.post('/', requireAuth, async (req, res, next) => {
        RETURNING *`,
       [parsed.name, parsed.color, parsed.quota, parsed.won ?? 0, parsed.winPercentage, parsed.image ?? null, parsed.sortIndex ?? null]
     );
+    emitPrizesUpdated(req);
     res.status(201).json({ prize: mapPrizeRow(rows[0]) });
   } catch (error) {
     next(error);
@@ -65,6 +74,8 @@ router.put('/:id', requireAuth, async (req, res, next) => {
       return;
     }
 
+    emitPrizesUpdated(req);
+    emitPrizesUpdated(req);
     res.json({ prize: mapPrizeRow(rows[0]) });
   } catch (error) {
     next(error);
@@ -78,6 +89,7 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
       res.status(404).json({ message: 'Prize not found' });
       return;
     }
+    emitPrizesUpdated(req);
     res.status(204).send();
   } catch (error) {
     next(error);
@@ -129,6 +141,7 @@ router.post('/reorder', requireAuth, async (req, res, next) => {
     });
 
     const { rows } = await query('SELECT * FROM prizes ORDER BY sort_index ASC, created_at ASC');
+    emitPrizesUpdated(req);
     res.json({ prizes: rows.map(mapPrizeRow) });
   } catch (error) {
     next(error);

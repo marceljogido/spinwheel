@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Sparkles, Settings, RefreshCw } from 'lucide-react';
+import { io } from 'socket.io-client';
 import { AdminPanel } from '@/components/AdminPanel';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,8 @@ import { listPrizes } from '@/lib/api/prizes';
 import { login, logout, fetchProfile } from '@/lib/api/auth';
 import type { AuthSession } from '@/types/auth';
 import { AUTH_STORAGE_KEY, PRIZES_STORAGE_KEY, WHEEL_CONFIG_STORAGE_KEY, TOTAL_SPINS_STORAGE_KEY } from '@/lib/storageKeys';
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
 const Admin = () => {
   const [prizes, setPrizes] = useState<Prize[]>(fallbackPrizes);
@@ -141,36 +144,36 @@ const Admin = () => {
     };
   }, [authSession?.token, clearAuthSession, hasLoadedSession, persistSession]);
 
-  useEffect(() => {
-    let ignore = false;
-
-    const loadPrizes = async () => {
-      setIsLoadingPrizes(true);
-      try {
-        const remotePrizes = await listPrizes();
-        if (!ignore && remotePrizes.length > 0) {
-          setPrizes(remotePrizes);
-          setPrizeSyncError(null);
-        }
-      } catch (error) {
-        if (!ignore) {
-          const message = error instanceof Error ? error.message : 'Tidak dapat memuat hadiah dari server';
-          setPrizeSyncError(message);
-          console.warn('Failed to load prizes from API, using local data.', error);
-        }
-      } finally {
-        if (!ignore) {
-          setIsLoadingPrizes(false);
-        }
+  const refreshPrizes = useCallback(async () => {
+    setIsLoadingPrizes(true);
+    try {
+      const remotePrizes = await listPrizes();
+      if (remotePrizes.length > 0) {
+        setPrizes(remotePrizes);
+        setPrizeSyncError(null);
       }
-    };
-
-    loadPrizes();
-
-    return () => {
-      ignore = true;
-    };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Tidak dapat memuat hadiah dari server';
+      setPrizeSyncError(message);
+      console.warn('Failed to load prizes from API, using local data.', error);
+    } finally {
+      setIsLoadingPrizes(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshPrizes();
+  }, [refreshPrizes]);
+
+  useEffect(() => {
+    const socket = io(SOCKET_URL, { withCredentials: true });
+    socket.on('prizes_updated', () => {
+      void refreshPrizes();
+    });
+    return () => {
+      socket.disconnect();
+    };
+  }, [refreshPrizes]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {

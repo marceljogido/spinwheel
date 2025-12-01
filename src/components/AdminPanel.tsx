@@ -107,6 +107,51 @@ export const AdminPanel = ({
     );
   };
 
+  const applyPercentageUnits = (units: number[]) => {
+    const next = prizes.map((prize, index) => {
+      const unit = units[index] ?? 0;
+      const percentage = Number((unit / 100).toFixed(2));
+      return { ...prize, winPercentage: percentage };
+    });
+    onPrizesUpdate(next);
+  };
+
+  const distributePercentagesEvenly = () => {
+    if (prizes.length === 0) return;
+    const totalUnits = 10000;
+    const base = Math.floor(totalUnits / prizes.length);
+    let remainder = totalUnits - base * prizes.length;
+    const units = prizes.map(() => {
+      const extra = remainder > 0 ? 1 : 0;
+      if (remainder > 0) remainder -= 1;
+      return base + extra;
+    });
+    applyPercentageUnits(units);
+  };
+
+  const distributePercentagesRandomly = () => {
+    if (prizes.length === 0) return;
+    const totalUnits = 10000;
+    const weights = prizes.map(() => Math.random() + 0.01);
+    const weightTotal = weights.reduce((sum, w) => sum + w, 0);
+    let rawUnits = weights.map(weight => Math.max(1, Math.floor((weight / weightTotal) * totalUnits)));
+    let currentTotal = rawUnits.reduce((sum, value) => sum + value, 0);
+    if (currentTotal !== totalUnits) {
+      const adjust = currentTotal > totalUnits ? -1 : 1;
+      let remaining = Math.abs(totalUnits - currentTotal);
+      let index = 0;
+      while (remaining > 0) {
+        const current = rawUnits[index % rawUnits.length];
+        if (adjust > 0 || current > 1) {
+          rawUnits[index % rawUnits.length] = current + adjust;
+          remaining -= 1;
+        }
+        index += 1;
+      }
+    }
+    applyPercentageUnits(rawUnits);
+  };
+
   const addPrize = () => {
     if (!newPrize.name.trim()) return;
     const prize: Prize = {
@@ -203,6 +248,15 @@ export const AdminPanel = ({
               <div className="text-2xl font-bold text-primary">{totalSpins}</div>
             </CardContent>
           </Card>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button variant="outline" onClick={distributePercentagesEvenly} disabled={prizes.length === 0}>
+            Bagi Rata Persentase
+          </Button>
+          <Button variant="outline" onClick={distributePercentagesRandomly} disabled={prizes.length === 0}>
+            Acak Persentase
+          </Button>
         </div>
 
         {totalWinPercentage !== 100 && (
@@ -453,8 +507,8 @@ export const AdminPanel = ({
                       );
                     })}
                   </TableBody>
+                  <TableCaption>Total hadiah tersimpan: {prizes.length}</TableCaption>
                 </Table>
-                <TableCaption>Total hadiah tersimpan: {prizes.length}</TableCaption>
               </CardContent>
             </Card>
           )}

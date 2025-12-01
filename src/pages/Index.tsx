@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { io } from 'socket.io-client';
 import { SpinWheel } from '@/components/SpinWheel';
 import type { Prize } from '@/types/prize';
 import { listPrizes, recordPrizeWin } from '@/lib/api/prizes';
@@ -10,6 +11,8 @@ import {
   LAST_PRIZE_STORAGE_KEY,
 } from '@/lib/storageKeys';
 import { fallbackPrizes, defaultWheelConfig, type WheelConfig } from '@/lib/wheelDefaults';
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
 const Index = () => {
   const [prizes, setPrizes] = useState<Prize[]>(fallbackPrizes);
@@ -64,38 +67,38 @@ const Index = () => {
     }
   }, []);
 
-  useEffect(() => {
-    let ignore = false;
-
-    const loadPrizes = async () => {
-      setIsLoadingPrizes(true);
-      try {
-        const remotePrizes = await listPrizes();
-        if (!ignore && remotePrizes.length > 0) {
-          setPrizes(remotePrizes);
-          setPrizeSyncError(null);
-          setFetchedRemotePrizes(true);
-        }
-      } catch (error) {
-        if (!ignore) {
-          const message = error instanceof Error ? error.message : 'Tidak dapat memuat hadiah dari server';
-          setPrizeSyncError(message);
-          setFetchedRemotePrizes(false);
-          console.warn('Failed to load prizes from API, using local fallback.', error);
-        }
-      } finally {
-        if (!ignore) {
-          setIsLoadingPrizes(false);
-        }
+  const refreshPrizes = useCallback(async () => {
+    setIsLoadingPrizes(true);
+    try {
+      const remotePrizes = await listPrizes();
+      if (remotePrizes.length > 0) {
+        setPrizes(remotePrizes);
+        setPrizeSyncError(null);
+        setFetchedRemotePrizes(true);
       }
-    };
-
-    loadPrizes();
-
-    return () => {
-      ignore = true;
-    };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Tidak dapat memuat hadiah dari server';
+      setPrizeSyncError(message);
+      setFetchedRemotePrizes(false);
+      console.warn('Failed to load prizes from API, using local fallback.', error);
+    } finally {
+      setIsLoadingPrizes(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshPrizes();
+  }, [refreshPrizes]);
+
+  useEffect(() => {
+    const socket = io(SOCKET_URL, { withCredentials: true });
+    socket.on('prizes_updated', () => {
+      void refreshPrizes();
+    });
+    return () => {
+      socket.disconnect();
+    };
+  }, [refreshPrizes]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
