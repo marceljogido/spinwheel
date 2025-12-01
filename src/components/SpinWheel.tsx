@@ -535,7 +535,7 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig, onActivePrizeChange
           width: wheelSize,
           height: wheelSize,
           maxWidth: '92vw',
-          marginTop: Math.max(wheelSize * 0.18, 56),
+          marginTop: Math.max(wheelSize * 0.08, 32),
         }}
       >
         <div className="pointer-events-none absolute inset-[-12%] rounded-full bg-[#0b5b2f]/20 blur-[90px]" />

@@ -27,6 +27,7 @@ interface AdminPanelProps {
   totalSpins: number;
   wheelConfig: WheelConfig;
   onWheelConfigUpdate: (config: WheelConfig) => void;
+  onResetSpins?: () => void;
 }
 
 const COLOR_CHOICES = ['#0f7c46', '#1ba25c', '#4fd27c', '#12894f', '#30c06f', '#8dfca7', '#ffde59', '#0b5b2f'];
@@ -71,6 +72,7 @@ export const AdminPanel = ({
   totalSpins,
   wheelConfig,
   onWheelConfigUpdate,
+  onResetSpins,
 }: AdminPanelProps) => {
   const [newPrize, setNewPrize] = useState(() => ({
     name: '',
@@ -198,6 +200,10 @@ export const AdminPanel = ({
   };
 
   const resetStatistics = () => {
+    if (onResetSpins) {
+      onResetSpins();
+      return;
+    }
     onPrizesUpdate(prizes.map(prize => ({ ...prize, won: 0 })));
   };
 
@@ -244,8 +250,11 @@ export const AdminPanel = ({
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold">Total Spin</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col items-center gap-3">
               <div className="text-2xl font-bold text-primary">{totalSpins}</div>
+              <Button variant="outline" size="sm" onClick={resetStatistics} disabled={prizes.length === 0}>
+                Reset Spin
+              </Button>
             </CardContent>
           </Card>
         </div>

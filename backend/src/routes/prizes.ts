@@ -75,7 +75,6 @@ router.put('/:id', requireAuth, async (req, res, next) => {
     }
 
     emitPrizesUpdated(req);
-    emitPrizesUpdated(req);
     res.json({ prize: mapPrizeRow(rows[0]) });
   } catch (error) {
     next(error);
@@ -120,7 +119,19 @@ router.post('/:id/win', async (req, res, next) => {
       return;
     }
 
+    emitPrizesUpdated(req);
     res.json({ prize: mapPrizeRow(rows[0]) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/reset', requireAuth, async (req, res, next) => {
+  try {
+    await query('UPDATE prizes SET won = 0, updated_at = NOW()');
+    const { rows } = await query('SELECT * FROM prizes ORDER BY sort_index ASC, created_at ASC');
+    emitPrizesUpdated(req);
+    res.json({ prizes: rows.map(mapPrizeRow) });
   } catch (error) {
     next(error);
   }

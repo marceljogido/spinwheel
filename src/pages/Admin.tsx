@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { fallbackPrizes, defaultWheelConfig, type WheelConfig } from '@/lib/wheelDefaults';
 import type { Prize } from '@/types/prize';
-import { listPrizes } from '@/lib/api/prizes';
+import { listPrizes, resetPrizeStatistics } from '@/lib/api/prizes';
 import { login, logout, fetchProfile } from '@/lib/api/auth';
 import type { AuthSession } from '@/types/auth';
 import { AUTH_STORAGE_KEY, PRIZES_STORAGE_KEY, WHEEL_CONFIG_STORAGE_KEY, TOTAL_SPINS_STORAGE_KEY } from '@/lib/storageKeys';
@@ -70,14 +70,6 @@ const Admin = () => {
       } catch (error) {
         console.warn('Failed to parse stored wheel config from localStorage.', error);
         window.localStorage.removeItem(WHEEL_CONFIG_STORAGE_KEY);
-      }
-    }
-
-    const storedSpins = window.localStorage.getItem(TOTAL_SPINS_STORAGE_KEY);
-    if (storedSpins) {
-      const parsed = Number.parseInt(storedSpins, 10);
-      if (!Number.isNaN(parsed)) {
-        setTotalSpins(parsed);
       }
     }
 
@@ -183,6 +175,14 @@ const Admin = () => {
   }, [prizes]);
 
   useEffect(() => {
+    const total = prizes.reduce((sum, prize) => sum + prize.won, 0);
+    setTotalSpins(total);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(TOTAL_SPINS_STORAGE_KEY, total.toString());
+    }
+  }, [prizes]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
@@ -253,6 +253,24 @@ const Admin = () => {
     setWheelConfig(newConfig);
   };
 
+  const handleResetSpinsRequest = async () => {
+    if (!authSession?.token) {
+      setPrizeSyncError('Harap login untuk mereset statistik.');
+      return;
+    }
+    try {
+      setIsLoadingPrizes(true);
+      const updated = await resetPrizeStatistics(authSession.token);
+      setPrizes(updated);
+      setPrizeSyncError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal mereset statistik hadiah.';
+      setPrizeSyncError(message);
+    } finally {
+      setIsLoadingPrizes(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
@@ -320,6 +338,7 @@ const Admin = () => {
               totalSpins={totalSpins}
               wheelConfig={wheelConfig}
               onWheelConfigUpdate={handleWheelConfigUpdate}
+              onResetSpins={handleResetSpinsRequest}
             />
           </div>
         ) : (

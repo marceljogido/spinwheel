@@ -99,3 +99,15 @@ export async function reorderPrizeSegments(order: Array<{ id: string; sortIndex:
   const data = await handleResponse<{ prizes: Prize[] }>(response);
   return data.prizes;
 }
+
+export async function resetPrizeStatistics(token?: string): Promise<Prize[]> {
+  const response = await fetch(`${API_BASE_URL}/prizes/reset`, {
+    method: 'POST',
+    headers: {
+      ...withAuthHeader(token)
+    },
+    credentials: 'include'
+  });
+  const data = await handleResponse<{ prizes: Prize[] }>(response);
+  return data.prizes;
+}
