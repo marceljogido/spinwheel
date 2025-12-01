@@ -15,7 +15,7 @@ import { login, logout, fetchProfile } from '@/lib/api/auth';
 import type { AuthSession } from '@/types/auth';
 import { AUTH_STORAGE_KEY, PRIZES_STORAGE_KEY, WHEEL_CONFIG_STORAGE_KEY, TOTAL_SPINS_STORAGE_KEY } from '@/lib/storageKeys';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? import.meta.env.VITE_API_URL ?? 'https://spinwheel.digioh.id';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
 const Admin = () => {
   const [prizes, setPrizes] = useState<Prize[]>(fallbackPrizes);

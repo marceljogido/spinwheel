@@ -12,7 +12,7 @@ import {
 } from '@/lib/storageKeys';
 import { fallbackPrizes, defaultWheelConfig, type WheelConfig } from '@/lib/wheelDefaults';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? import.meta.env.VITE_API_URL ?? 'https://spinwheel.digioh.id';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
 const Index = () => {
   const [prizes, setPrizes] = useState<Prize[]>(fallbackPrizes);

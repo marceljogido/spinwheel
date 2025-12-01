@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://spinwheel.digioh.id';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
 const handleAuthResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
