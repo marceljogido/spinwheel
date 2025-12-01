@@ -147,11 +147,11 @@ function PrizePopup({ prize, onClose }: { prize: Prize | null; onClose: () => vo
   const headingText = isLosingPrize ? 'Sayang Sekali!' : 'Selamat!';
   const messageText = isLosingPrize ? 'Hadiah belum berpihak kali ini. Putar roda lagi untuk kesempatan berikutnya.' : 'Kamu mendapatkan hadiah:';
   const actionLabel = isLosingPrize ? 'Spin Lagi' : 'Tutup';
-  const gradientClass = isLosingPrize ? 'from-[#24324f] to-[#1a233b]' : 'from-[#1f4f9b] to-[#2c6eb6]';
+  const gradientClass = isLosingPrize ? 'from-[#1a1f2a] to-[#10141a]' : 'from-[#0b5b2f] via-[#11a84f] to-[#7bf59d]';
   const highlightClass = isLosingPrize
     ? 'mt-2 rounded-full bg-white/10 px-6 py-2 text-xl font-semibold uppercase tracking-wide text-white shadow-[0_6px_18px_rgba(0,0,0,0.35)]'
-    : 'mt-1 text-3xl font-black uppercase tracking-wide text-[#f5c33f]';
-  const buttonClasses = `mt-2 rounded-full px-8 py-3 text-base font-semibold text-[#1f4f9b] shadow-[0_12px_30px_rgba(15,58,100,0.35)] transition hover:bg-white ${isLosingPrize ? 'bg-white/85' : 'bg-white/90'}`;
+    : 'mt-1 text-3xl font-black uppercase tracking-wide text-[#ffe889]';
+  const buttonClasses = `mt-2 rounded-full px-8 py-3 text-base font-semibold text-[#0e6635] shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:bg-white ${isLosingPrize ? 'bg-white/85' : 'bg-white/95'}`;
   const highlightText = isLosingPrize ? 'Tetap Semangat!' : prize.name;
 
   return (
@@ -359,7 +359,7 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig, onActivePrizeChange
   const createEnhancedConfetti = () => {
     if (!config.showConfetti) return;
 
-    const colors = ['#f5c33f', '#1f4f9b', '#f8f8f8', '#2c6eb6'];
+    const colors = ['#ffde59', '#0b5b2f', '#1aa953', '#80f5a5', '#ffffff'];
 
     for (let i = 0; i < 45; i++) {
       const confetti = document.createElement('div');
@@ -508,12 +508,24 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig, onActivePrizeChange
   const segmentCount = segments.length;
   const segmentAngle = segmentCount > 0 ? 360 / segmentCount : 0;
   const fontScale = segmentCount >= 16 ? 0.03 : segmentCount >= 12 ? 0.035 : 0.042;
+  const wheelInsetPx = 6;
+  const innerWheelSize = Math.max(wheelSize - wheelInsetPx * 2, 0);
+  const pointerWidth = Math.max(innerWheelSize * 0.1, 48);
+  const pointerHeight = Math.max(innerWheelSize * 0.28, 70);
+  const pointerTopOffset = Math.max(pointerHeight * 0.6, 34);
 
   const wheelBackground = segmentCount > 0
     ? `conic-gradient(${segments
         .map(({ color }, index) => `${color} ${index * segmentAngle}deg ${(index + 1) * segmentAngle}deg`)
         .join(', ')})`
     : '#dce5f5';
+  const dividerBackground = segmentCount > 0
+    ? (() => {
+        const dividerWidth = 0.6;
+        return `repeating-conic-gradient(#0a1d21 0deg, #0a1d21 ${dividerWidth}deg, transparent ${dividerWidth}deg, transparent ${segmentAngle}deg)`;
+      })()
+    : 'transparent';
+  const combinedWheelBackground = segmentCount > 0 ? `${dividerBackground}, ${wheelBackground}` : wheelBackground;
 
   return (
     <div className={`relative flex w-full flex-col items-center ${isShaking ? 'animate-screen-shake' : ''}`}>
@@ -526,39 +538,52 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig, onActivePrizeChange
           marginTop: Math.max(wheelSize * 0.18, 56),
         }}
       >
-        <div className="pointer-events-none absolute inset-[-14%] rounded-full bg-[#0e3f76]/15 blur-3xl" />
-        <div className="absolute inset-0 rounded-full border-[14px] border-[#0f3a64] bg-white shadow-[0_25px_60px_rgba(15,58,100,0.35)]" />
+        <div className="pointer-events-none absolute inset-[-12%] rounded-full bg-[#0b5b2f]/20 blur-[90px]" />
+        <div className="pointer-events-none absolute inset-0 z-20 rounded-full border-[2px] border-[#0a1d21] shadow-[0_12px_30px_rgba(0,0,0,0.32)]" />
+        <div
+          className="pointer-events-none absolute inset-[1px] z-10 rounded-full border-[6px] border-white"
+          style={{ boxShadow: 'inset 0 0 0 1px #0a1d21' }}
+        />
 
         <div
           ref={wheelRef}
-          className={`relative z-10 h-full w-full overflow-hidden rounded-full transition-transform duration-300 ease-out ${
+          className={`relative z-0 overflow-hidden rounded-full transition-transform duration-300 ease-out ${
             showBounce ? 'animate-wheel-bounce-stop' : ''
           }`}
           style={{
-            background: wheelBackground,
+            width: `${innerWheelSize}px`,
+            height: `${innerWheelSize}px`,
+            margin: `${wheelInsetPx}px auto`,
+            backgroundImage: combinedWheelBackground,
+            backgroundColor: segmentCount > 0 ? 'transparent' : '#dce5f5',
             boxShadow: 'inset 0 12px 30px rgba(255,255,255,0.35), inset 0 -20px 40px rgba(13,61,117,0.3)',
+            border: '2px solid #0a1d21',
           }}
         >
           {segments.map(({ prize, color }, index) => {
             const rotation = index * segmentAngle;
             const isAvailable = prize.won < prize.quota;
             const textColor = getSegmentTextColor(color);
-            const labelOffsetPx = Math.min(Math.max(wheelSize * 0.06 + 10, 22), wheelSize * 0.14);
+            const baseLabelOffset = Math.min(Math.max(innerWheelSize * 0.006 + 2, 8), innerWheelSize * 0.06);
+            const normalizedNameLength = prize.name.replace(/\s+/g, '').length;
+            const shortNamePullout = normalizedNameLength <= 12 ? Math.min(innerWheelSize * 0.015, 5) : 0;
+            const veryShortCompensation = normalizedNameLength <= 7 ? Math.min(innerWheelSize * 0.01, 4) : 0;
+            const effectiveLabelOffset = Math.max(baseLabelOffset - shortNamePullout - veryShortCompensation, 5);
 
-            let basePercent = -56;
-            if (wheelSize < 260) {
-              basePercent = -46;
-            } else if (wheelSize < 320) {
-              basePercent = -48;
-            } else if (wheelSize < 380) {
+            let basePercent = -58;
+            if (innerWheelSize < 260) {
+              basePercent = -50;
+            } else if (innerWheelSize < 320) {
               basePercent = -52;
-            } else if (wheelSize < 460) {
+            } else if (innerWheelSize < 380) {
               basePercent = -54;
+            } else if (innerWheelSize < 460) {
+              basePercent = -56;
             }
 
-            const labelFontSize = Math.min(Math.max(wheelSize * fontScale, 11.5), 18.5);
-            const labelMaxWidth = Math.min(Math.max(wheelSize * 0.3, 90), 168);
-            const lineHeight = segments.length <= 6 ? (wheelSize < 360 ? 1.16 : 1.12) : 1.18;
+            const labelFontSize = Math.min(Math.max(innerWheelSize * fontScale, 11.5), 17.5);
+            const labelMaxWidth = Math.min(Math.max(innerWheelSize * 0.26, 90), 160);
+            const lineHeight = segments.length <= 6 ? (innerWheelSize < 360 ? 1.16 : 1.12) : 1.18;
 
             return (
               <div
@@ -575,7 +600,7 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig, onActivePrizeChange
                       isAvailable ? 'opacity-100' : 'opacity-60'
                     } ${isSpinning ? 'animate-pulse' : ''}`}
                     style={{
-                      marginTop: `calc(${basePercent}% + ${labelOffsetPx}px)`,
+                      marginTop: `calc(${basePercent}% + ${effectiveLabelOffset}px)`,
                     }}
                   >
                     {prize.image && config.showImages && (
@@ -584,24 +609,20 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig, onActivePrizeChange
                         alt={prize.name}
                         className="rounded-full border-2 border-white/70 object-cover shadow-lg"
                         style={{
-                          width: `${Math.max(wheelSize * 0.12, 42)}px`,
-                          height: `${Math.max(wheelSize * 0.12, 42)}px`,
+                          width: `${Math.max(innerWheelSize * 0.12, 42)}px`,
+                          height: `${Math.max(innerWheelSize * 0.12, 42)}px`,
                         }}
                       />
                     )}
                     <span
-                      className="font-bold uppercase tracking-tight drop-shadow-sm"
+                      className="font-black uppercase tracking-[0.01em] text-[#0a1d21]"
                       style={{
                         fontSize: `${labelFontSize}px`,
                         maxWidth: `${labelMaxWidth}px`,
-                        color: textColor,
+                        color: '#0a1d21',
                         lineHeight,
-                        wordBreak: 'break-word',
+                        wordBreak: 'normal',
                         whiteSpace: 'normal',
-                        textShadow:
-                          textColor === '#ffffff'
-                            ? '0 0 12px rgba(13,61,117,0.45)'
-                            : '0 0 10px rgba(255,255,255,0.45)',
                       }}
                     >
                       {prize.name}
@@ -616,10 +637,10 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig, onActivePrizeChange
         <button
           onClick={spin}
           disabled={isSpinning || availablePrizes.length === 0}
-          className="absolute top-1/2 left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border-none outline-none focus-visible:ring-4 focus-visible:ring-[#f5c33f]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white transition-transform duration-200 ease-out hover:scale-[1.04] disabled:cursor-not-allowed disabled:hover:scale-100"
+          className="absolute top-1/2 left-1/2 z-40 -translate-x-1/2 -translate-y-1/2 rounded-full border-none outline-none focus-visible:ring-4 focus-visible:ring-[#f5c33f]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white transition-transform duration-200 ease-out hover:scale-[1.04] disabled:cursor-not-allowed disabled:hover:scale-100"
           style={{
-            width: `${Math.max(wheelSize * 0.26, 90)}px`,
-            height: `${Math.max(wheelSize * 0.26, 90)}px`,
+            width: `${Math.max(innerWheelSize * 0.26, 90)}px`,
+            height: `${Math.max(innerWheelSize * 0.26, 90)}px`,
             backgroundImage: "url('/assets/Button.png')",
             backgroundSize: 'contain',
             backgroundPosition: 'center',
@@ -632,16 +653,18 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig, onActivePrizeChange
         </button>
 
         <div
-          className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2"
-          style={{ top: `-${Math.max(wheelSize * 0.1, 76)}px` }}
+          className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2 flex justify-center"
+          style={{ top: `-${pointerTopOffset}px`, width: `${pointerWidth}px` }}
         >
           <img
             src="/assets/pointer.png"
             alt="Penunjuk roda"
-            className={`select-none transition-transform duration-300 -rotate-90 ${showBounce ? 'animate-bounce' : ''}`}
+            className="select-none transition-transform duration-300"
             style={{
-              width: `${Math.max(wheelSize * 0.34, 120)}px`,
-              filter: 'drop-shadow(0 18px 25px rgba(15, 58, 100, 0.45))',
+              width: '100%',
+              height: `${pointerHeight}px`,
+              objectFit: 'contain',
+              filter: 'drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55))',
             }}
             draggable={false}
           />

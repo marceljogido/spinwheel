@@ -29,7 +29,39 @@ interface AdminPanelProps {
   onWheelConfigUpdate: (config: WheelConfig) => void;
 }
 
-const COLOR_CHOICES = ['#1f4f9b', '#f5c33f', '#cfd3dc', '#2c6eb6', '#8b4513', '#ff6347', '#32cd32'];
+const COLOR_CHOICES = ['#0f7c46', '#1ba25c', '#4fd27c', '#12894f', '#30c06f', '#8dfca7', '#ffde59', '#0b5b2f'];
+
+const HEX_COLOR_REGEX = /^#?[0-9a-f]{6}$/i;
+const RGB_COLOR_REGEX = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*(\d+(?:\.\d+)?))?\s*\)$/i;
+
+const normalizeColorValue = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (HEX_COLOR_REGEX.test(trimmed)) {
+    return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+  }
+  if (RGB_COLOR_REGEX.test(trimmed)) {
+    return trimmed.replace(/\s+/g, ' ');
+  }
+  return trimmed;
+};
+
+const rgbToHex = (value: string): string | null => {
+  const match = value.trim().match(RGB_COLOR_REGEX);
+  if (!match) return null;
+  const r = Math.max(0, Math.min(255, Number(match[1])));
+  const g = Math.max(0, Math.min(255, Number(match[2])));
+  const b = Math.max(0, Math.min(255, Number(match[3])));
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`.toLowerCase();
+};
+
+const getColorPickerValue = (color: string, fallback = '#0f7c46') => {
+  if (HEX_COLOR_REGEX.test(color)) {
+    return color.startsWith('#') ? color : `#${color}`;
+  }
+  const hex = rgbToHex(color);
+  return hex ?? fallback;
+};
 
 const randomColor = () => COLOR_CHOICES[Math.floor(Math.random() * COLOR_CHOICES.length)];
 
@@ -229,7 +261,23 @@ export const AdminPanel = ({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-prize-color">Warna Segmen</Label>
-                  <Input id="new-prize-color" type="color" value={newPrize.color} onChange={event => setNewPrize(prev => ({ ...prev, color: event.target.value }))} className="h-10 w-20 p-1" />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Input
+                      id="new-prize-color"
+                      type="color"
+                      value={getColorPickerValue(newPrize.color)}
+                      onChange={event => setNewPrize(prev => ({ ...prev, color: event.target.value }))}
+                      className="h-10 w-20 p-1"
+                    />
+                    <Input
+                      type="text"
+                      value={newPrize.color}
+                      onChange={event => setNewPrize(prev => ({ ...prev, color: normalizeColorValue(event.target.value) }))}
+                      placeholder="#01d15f atau rgb(1, 209, 95)"
+                      className="sm:flex-1"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Isi dengan HEX (#01d15f) atau RGB (rgb(1, 209, 95)).</p>
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="new-prize-image">Gambar Hadiah (opsional)</Label>
@@ -296,8 +344,22 @@ export const AdminPanel = ({
                         </div>
                         <div className="space-y-2">
                           <Label>Warna Segmen</Label>
-                          <div className="flex items-center gap-3">
-                            <Input type="color" value={prize.color} onChange={event => updatePrize(prize.id, { color: event.target.value })} className="h-10 w-20 p-1" />
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <Input
+                                type="color"
+                                value={getColorPickerValue(prize.color)}
+                                onChange={event => updatePrize(prize.id, { color: event.target.value })}
+                                className="h-10 w-20 p-1"
+                              />
+                              <Input
+                                type="text"
+                                value={prize.color}
+                                onChange={event => updatePrize(prize.id, { color: normalizeColorValue(event.target.value) })}
+                                placeholder="#7eff9b atau rgb(126, 255, 155)"
+                                className="flex-1"
+                              />
+                            </div>
                             <div className="flex flex-wrap gap-2">
                               {COLOR_CHOICES.map(color => (
                                 <button
@@ -454,7 +516,22 @@ export const AdminPanel = ({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="default-color">Warna Default Segmen</Label>
-                  <Input id="default-color" type="color" value={wheelConfig.defaultColor} onChange={event => updateWheelConfigValue('defaultColor', event.target.value)} className="h-10 w-20 p-1" />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Input
+                      id="default-color"
+                      type="color"
+                      value={getColorPickerValue(wheelConfig.defaultColor, '#8dfca7')}
+                      onChange={event => updateWheelConfigValue('defaultColor', event.target.value)}
+                      className="h-10 w-20 p-1"
+                    />
+                    <Input
+                      type="text"
+                      value={wheelConfig.defaultColor}
+                      onChange={event => updateWheelConfigValue('defaultColor', normalizeColorValue(event.target.value))}
+                      placeholder="#01d15f atau rgb(1, 209, 95)"
+                      className="flex-1"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Animasi Spin</Label>

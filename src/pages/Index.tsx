@@ -177,11 +177,15 @@ const Index = () => {
             onActivePrizeChange={prize => setActivePrizeName(prize ? prize.name : null)}
           />
 
-          <div className="w-full max-w-xl text-center -mt-8">
-            <p className="mx-auto flex min-w-[260px] max-w-md items-center justify-center rounded-[28px] bg-white/85 px-6 py-4 text-center text-base font-semibold uppercase tracking-[0.28em] text-[#1f4f9b] shadow-[0_16px_40px_rgba(15,58,100,0.18)] backdrop-blur whitespace-nowrap sm:tracking-[0.34em] md:tracking-[0.4em]">
-              {activePrizeName ?? lastPrizeName ? `[ ${activePrizeName ?? lastPrizeName} ]` : '[ Putar roda untuk melihat hadiahmu ]'}
-            </p>
-          </div>
+          {/* <div className="w-full max-w-xl text-center -mt-8">
+            <div className="mx-auto flex min-w-[260px] max-w-md items-center justify-center gap-3 overflow-hidden rounded-[32px] bg-gradient-to-r from-[#0d6c39] via-[#11a84f] to-[#74f29a] px-6 py-4 text-center shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur">
+              <span className="text-base font-semibold uppercase tracking-[0.6em] text-white/80">[</span>
+              <span className="max-w-full px-3 text-lg font-black uppercase tracking-[0.24em] text-white whitespace-nowrap sm:text-xl">
+                {activePrizeName ?? lastPrizeName ?? 'Putar roda untuk melihat hadiahmu'}
+              </span>
+              <span className="text-base font-semibold uppercase tracking-[0.6em] text-white/80">]</span>
+            </div>
+          </div> */}
 
           {showStatusBanner && (
             <div className="flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-[#0f3a64] backdrop-blur">
