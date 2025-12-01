@@ -1,13 +1,22 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { Plus, Trash2, BarChart3, Settings, GripVertical, Eye, EyeOff, Image as ImageIcon, Sparkles, Edit3, Check, X } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Plus, Trash2, Image as ImageIcon, Settings, BarChart3, Sparkles, RefreshCw, Info } from 'lucide-react';
 import { AudioManager } from './AudioManager';
 import type { Prize } from '@/types/prize';
 import type { WheelConfig } from '@/lib/wheelDefaults';
@@ -20,876 +29,534 @@ interface AdminPanelProps {
   onWheelConfigUpdate: (config: WheelConfig) => void;
 }
 
-const predefinedColors = [
-  '#8B4513', // Brown - Coffee
-  '#FFD700', // Gold - Discount
-  '#4169E1', // Royal Blue - Clothing
-  '#32CD32', // Lime Green - Money
-  '#FF6347', // Tomato Red - Try Again
-  '#9370DB', // Medium Purple - VIP
-  '#FF8C00', // Dark Orange - Energy
-  '#20B2AA'  // Light Sea Green - Fresh
-];
+const COLOR_CHOICES = ['#1f4f9b', '#f5c33f', '#cfd3dc', '#2c6eb6', '#8b4513', '#ff6347', '#32cd32'];
 
-export const AdminPanel = ({ prizes, onPrizesUpdate, totalSpins, wheelConfig, onWheelConfigUpdate }: AdminPanelProps) => {
-  const [newPrize, setNewPrize] = useState({
+const randomColor = () => COLOR_CHOICES[Math.floor(Math.random() * COLOR_CHOICES.length)];
+
+export const AdminPanel = ({
+  prizes,
+  onPrizesUpdate,
+  totalSpins,
+  wheelConfig,
+  onWheelConfigUpdate,
+}: AdminPanelProps) => {
+  const [newPrize, setNewPrize] = useState(() => ({
     name: '',
     quota: 1,
-    color: predefinedColors[0],
+    winPercentage: 0,
+    color: randomColor(),
     image: '',
-    winPercentage: 10 // Default 10% kemungkinan menang
-  });
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [editingPrize, setEditingPrize] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({
+  }));
+
+  const totalWinPercentage = useMemo(
+    () => Number(prizes.reduce((sum, prize) => sum + Number(prize.winPercentage ?? 0), 0).toFixed(2)),
+    [prizes],
+  );
+
+  const totalRemainingPrize = useMemo(
+    () => prizes.reduce((sum, prize) => sum + Math.max(prize.quota - prize.won, 0), 0),
+    [prizes],
+  );
+
+  const clampPercentage = (value: number) => Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+
+  const createEmptyPrize = (baseColor: string): Prize => ({
+    id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
     name: '',
+    color: baseColor,
     quota: 1,
-    winPercentage: 10
+    won: 0,
+    winPercentage: 0,
   });
 
-  // Drag & drop urutan hadiah
-  const handleDragStart = (index: number) => setDragIndex(index);
-  const handleDragOver = (index: number) => {
-    if (dragIndex === null || dragIndex === index) return;
-    const updated = [...prizes];
-    const [removed] = updated.splice(dragIndex, 1);
-    updated.splice(index, 0, removed);
-    onPrizesUpdate(updated);
-    setDragIndex(index);
+  const updatePrize = (id: string, updates: Partial<Prize>) => {
+    onPrizesUpdate(
+      prizes.map(prize => (prize.id === id ? { ...prize, ...updates, winPercentage: clampPercentage(updates.winPercentage ?? prize.winPercentage) } : prize)),
+    );
   };
-  const handleDragEnd = () => setDragIndex(null);
 
   const addPrize = () => {
     if (!newPrize.name.trim()) return;
     const prize: Prize = {
-      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
-      name: newPrize.name,
-      color: newPrize.color,
-      quota: newPrize.quota,
-      won: 0,
-      image: newPrize.image || undefined,
-      winPercentage: newPrize.winPercentage
+      ...createEmptyPrize(newPrize.color),
+      name: newPrize.name.trim(),
+      quota: Math.max(0, newPrize.quota),
+      winPercentage: clampPercentage(newPrize.winPercentage),
+      image: newPrize.image ? newPrize.image : undefined,
     };
     onPrizesUpdate([...prizes, prize]);
     setNewPrize({
       name: '',
       quota: 1,
-      color: predefinedColors[Math.floor(Math.random() * predefinedColors.length)],
+      winPercentage: 0,
+      color: randomColor(),
       image: '',
-      winPercentage: 10
     });
   };
 
   const removePrize = (id: string) => {
-    onPrizesUpdate(prizes.filter(p => p.id !== id));
+    onPrizesUpdate(prizes.filter(prize => prize.id !== id));
   };
 
-  const updatePrizeQuota = (id: string, quota: number) => {
-    onPrizesUpdate(prizes.map(p => 
-      p.id === id ? { ...p, quota: Math.max(0, quota) } : p
-    ));
-  };
-
-  const updatePrizeWinPercentage = (id: string, winPercentage: number) => {
-    // Clamp between 0 and 100
-    const clampedPercentage = Math.max(0, Math.min(100, winPercentage));
-    
-    onPrizesUpdate(prizes.map(p => 
-      p.id === id ? { ...p, winPercentage: clampedPercentage } : p
-    ));
-    
-    // Show warning if total percentage exceeds 100%
-    const totalPercentage = prizes.reduce((sum, prize) => 
-      sum + (prize.id === id ? clampedPercentage : prize.winPercentage), 0
-    );
-    
-    if (totalPercentage > 100) {
-      console.warn(`⚠️ Total win percentage is ${totalPercentage}%, which exceeds 100%`);
-    }
-  };
-
-  const startEditPrize = (prize: Prize) => {
-    setEditingPrize(prize.id);
-    setEditForm({
-      name: prize.name,
-      quota: prize.quota,
-      winPercentage: prize.winPercentage
-    });
-  };
-
-  const saveEditPrize = () => {
-    if (!editingPrize || !editForm.name.trim()) return;
-    
-    onPrizesUpdate(prizes.map(p => 
-      p.id === editingPrize ? { 
-        ...p, 
-        name: editForm.name.trim(),
-        quota: Math.max(0, editForm.quota),
-        winPercentage: Math.max(0, Math.min(100, editForm.winPercentage))
-      } : p
-    ));
-    
-    setEditingPrize(null);
-    setEditForm({ name: '', quota: 1, winPercentage: 10 });
-  };
-
-  const cancelEditPrize = () => {
-    setEditingPrize(null);
-    setEditForm({ name: '', quota: 1, winPercentage: 10 });
-  };
-
-  // Audio upload handler
-  const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>, type: 'spin' | 'win' | 'bgm') => {
+  const handleImageUpload = (id: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('audio/')) {
-        alert('Please select an audio file');
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
-        return;
-      }
-
-      // Create object URL for immediate use
-      const audioUrl = URL.createObjectURL(file);
-      
-      // Update audio source based on type
-      const audioElement = new Audio(audioUrl);
-      audioElement.volume = 0.7;
-      
-      // Store the new audio URL (in real app, you'd upload to server)
-      console.log(`New ${type} audio uploaded:`, file.name);
-      
-      // Test the audio
-      audioElement.play().catch(console.error);
-      
-      // In a real application, you would:
-      // 1. Upload file to server
-      // 2. Get new URL from server
-      // 3. Update audio sources in components
-      // 4. Save to database
-      
-      alert(`${type} audio uploaded successfully! File: ${file.name}`);
-    }
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const imageUrl = e.target?.result as string;
+      updatePrize(id, { image: imageUrl });
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Test audio function
-  const testAudio = (type: 'spin' | 'win' | 'bgm') => {
-    try {
-      const audio = new Audio(`/sounds/${type}.mp3`);
-      audio.volume = 0.7;
-      audio.play().catch(console.error);
-    } catch (error) {
-      console.warn(`${type} audio test failed:`, error);
-    }
-  };
-
-  const handleImageUpload = (prizeId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewPrizeImage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target?.result as string;
-        onPrizesUpdate(prizes.map(prize =>
-          prize.id === prizeId ? { ...prize, image: imageUrl } : prize
-        ));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeImage = (prizeId: string) => {
-    onPrizesUpdate(prizes.map(prize =>
-      prize.id === prizeId ? { ...prize, image: undefined } : prize
-    ));
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const imageUrl = e.target?.result as string;
+      setNewPrize(prev => ({ ...prev, image: imageUrl }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const resetStatistics = () => {
-    onPrizesUpdate(prizes.map(p => ({ ...p, won: 0 })));
+    onPrizesUpdate(prizes.map(prize => ({ ...prize, won: 0 })));
   };
 
-  // Dummy/zonk segment
-  const addDummySegment = () => onWheelConfigUpdate({ ...wheelConfig, dummySegments: wheelConfig.dummySegments + 1 });
-  const removeDummySegment = () => onWheelConfigUpdate({ ...wheelConfig, dummySegments: Math.max(0, wheelConfig.dummySegments - 1) });
-
-  const totalPrizesAvailable = prizes.reduce((sum, prize) => sum + (prize.quota - prize.won), 0);
-  const totalWinPercentage = prizes.reduce((sum, prize) => sum + prize.winPercentage, 0);
+  const updateWheelConfigValue = <K extends keyof WheelConfig>(key: K, value: WheelConfig[K]) => {
+    onWheelConfigUpdate({ ...wheelConfig, [key]: value });
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold bg-gradient-wheel bg-clip-text text-transparent">
-          Admin Control Panel
-        </h2>
-        <p className="text-muted-foreground mt-2">
-          Manage your prize wheel configuration and view statistics
-        </p>
-        
-        {/* Total Win Percentage Indicator */}
-        <div className="mt-4 p-3 bg-muted/50 rounded-lg max-w-md mx-auto">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Total Win Percentage:</span>
-            <span className={`text-lg font-bold ${
-              totalWinPercentage > 100 ? 'text-red-500' : 
-              totalWinPercentage === 100 ? 'text-green-500' : 
-              'text-yellow-500'
-            }`}>
-              {totalWinPercentage}%
-            </span>
-          </div>
-          {totalWinPercentage > 100 && (
-            <p className="text-xs text-red-500 mt-1">
-              ⚠️ Total exceeds 100% - some prizes may not be selectable
-            </p>
-          )}
-          {totalWinPercentage < 100 && (
-            <p className="text-xs text-yellow-500 mt-1">
-              ℹ️ Total less than 100% - remaining chance goes to random selection
-            </p>
-          )}
-          {totalWinPercentage === 100 && (
-            <p className="text-xs text-green-500 mt-1">
-              ✅ Perfect! All percentages add up to 100%
-            </p>
-          )}
+    <div className="space-y-8">
+      <div className="text-center space-y-4">
+        <div>
+          <h2 className="text-3xl font-bold bg-gradient-wheel bg-clip-text text-transparent">Admin Control Panel</h2>
+          <p className="text-muted-foreground mt-2">Kelola hadiah, konfigurasi roda, dan audio dalam satu tempat.</p>
         </div>
 
-        {/* Quick Setup Buttons */}
-        <div className="mt-4 flex flex-wrap gap-2 justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onPrizesUpdate(prizes.map(p => ({ ...p, winPercentage: 0 })));
-            }}
-            className="text-xs"
-          >
-            Reset All to 0%
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const equalPercentage = Math.floor(100 / prizes.length);
-              const remainder = 100 - (equalPercentage * prizes.length);
-              onPrizesUpdate(prizes.map((p, index) => ({ 
-                ...p, 
-                winPercentage: equalPercentage + (index < remainder ? 1 : 0)
-              })));
-            }}
-            className="text-xs"
-          >
-            Equal Distribution
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onPrizesUpdate(prizes.map(p => ({ 
-                ...p, 
-                winPercentage: p.name === 'Try Again' ? 50 : 
-                             p.name === 'Free Coffee' ? 20 :
-                             p.name === '10% Discount' ? 15 :
-                             p.name === 'Gift Card $25' ? 10 :
-                             p.name === 'VIP Access' ? 5 : 0
-              })));
-            }}
-            className="text-xs"
-          >
-          </Button>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Total Win Percentage</CardTitle>
+              <CardDescription>Pastikan totalnya tidak melebihi 100%.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div
+                className={`text-2xl font-bold ${
+                  totalWinPercentage > 100 ? 'text-red-500' : totalWinPercentage === 100 ? 'text-emerald-500' : 'text-amber-500'
+                }`}
+              >
+                {totalWinPercentage}%
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Total Stok Hadiah</CardTitle>
+              <CardDescription>Sisa hadiah yang belum dimenangkan.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">{totalRemainingPrize}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Total Spin</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">{totalSpins}</div>
+            </CardContent>
+          </Card>
         </div>
+
+        {totalWinPercentage !== 100 && (
+          <div className="mx-auto flex max-w-xl items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-left text-sm text-amber-700">
+            <Info className="h-4 w-4 flex-shrink-0" />
+            <p>
+              Total persentase saat ini {totalWinPercentage}%.{' '}
+              {totalWinPercentage > 100 ? 'Turunkan persentase hadiah hingga total 100% agar peluang terbagi adil.' : 'Masih ada peluang tersisa, tambahkan ke hadiah lain atau sisakan sebagai random pick.'}
+            </p>
+          </div>
+        )}
       </div>
 
       <Tabs defaultValue="prizes" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="prizes" className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            Prizes
+            <Settings className="h-4 w-4" />
+            Hadiah
           </TabsTrigger>
           <TabsTrigger value="statistics" className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            Statistics
+            <BarChart3 className="h-4 w-4" />
+            Statistik
           </TabsTrigger>
           <TabsTrigger value="audio" className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />
-            Audio
+            <Sparkles className="h-4 w-4" />
+            Audio & Pengaturan
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            Settings
-          </TabsTrigger>
-
         </TabsList>
 
-        {/* PRIZES TAB */}
-        <TabsContent value="prizes">
+        <TabsContent value="prizes" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Add New Prize</CardTitle>
+              <CardTitle>Tambah Hadiah Baru</CardTitle>
+              <CardDescription>Isi data hadiah, kemudian klik tambah. Semua field dapat diedit kembali.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-col md:flex-row gap-4 items-center">
-                <Input
-                  placeholder="Prize name"
-                  value={newPrize.name}
-                  onChange={e => setNewPrize({ ...newPrize, name: e.target.value })}
-                  className="max-w-xs"
-                />
-                <Input
-                  type="number"
-                  min={1}
-                  value={newPrize.quota}
-                  onChange={e => setNewPrize({ ...newPrize, quota: Number(e.target.value) })}
-                  className="w-20"
-                  title="Quota"
-                />
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm">Win %:</Label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="new-prize-name">Nama Hadiah</Label>
+                  <Input id="new-prize-name" value={newPrize.name} onChange={event => setNewPrize(prev => ({ ...prev, name: event.target.value }))} placeholder="Contoh: Handuk Eksklusif" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-prize-percentage">Persentase Menang (%)</Label>
                   <Input
+                    id="new-prize-percentage"
                     type="number"
                     min={0}
                     max={100}
                     value={newPrize.winPercentage}
-                    onChange={e => setNewPrize({ ...newPrize, winPercentage: Number(e.target.value) })}
-                    className="w-16"
-                    title="Win Percentage (0-100)"
+                    onChange={event => setNewPrize(prev => ({ ...prev, winPercentage: clampPercentage(Number(event.target.value)) }))}
                   />
                 </div>
-                <input
-                  type="color"
-                  value={newPrize.color}
-                  onChange={e => setNewPrize({ ...newPrize, color: e.target.value })}
-                  className="w-10 h-10 p-0 border-none bg-transparent"
-                  title="Pick color"
-                />
-              </div>
-              
-              {/* Image Upload Section */}
-              <div className="space-y-3">
-                <Label htmlFor="prize-image" className="text-sm font-medium">
-                  Prize Image (Optional)
-                </Label>
-                <div className="flex items-center gap-3">
-                  <Input
-                    id="prize-image"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                          const imageUrl = e.target?.result as string;
-                          setNewPrize({ ...newPrize, image: imageUrl });
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="max-w-xs"
-                  />
-                  {newPrize.image && (
-                    <div className="flex items-center gap-2">
-                      <img 
-                        src={newPrize.image} 
-                        alt="Preview" 
-                        className="w-12 h-12 object-cover rounded-lg border-2 border-gray-200"
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setNewPrize({ ...newPrize, image: '' })}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
+                <div className="space-y-2">
+                  <Label htmlFor="new-prize-quota">Stok Hadiah</Label>
+                  <Input id="new-prize-quota" type="number" min={0} value={newPrize.quota} onChange={event => setNewPrize(prev => ({ ...prev, quota: Math.max(0, Number(event.target.value)) }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-prize-color">Warna Segmen</Label>
+                  <Input id="new-prize-color" type="color" value={newPrize.color} onChange={event => setNewPrize(prev => ({ ...prev, color: event.target.value }))} className="h-10 w-20 p-1" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="new-prize-image">Gambar Hadiah (opsional)</Label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Input id="new-prize-image" type="file" accept="image/*" onChange={handleNewPrizeImage} className="max-w-xs" />
+                    {newPrize.image && (
+                      <div className="flex items-center gap-3">
+                        <img src={newPrize.image} alt="Preview hadiah baru" className="h-14 w-14 rounded-lg border object-cover" />
+                        <Button variant="outline" size="sm" onClick={() => setNewPrize(prev => ({ ...prev, image: '' }))}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Hapus
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-              
+            </CardContent>
+            <CardFooter className="flex justify-end">
               <Button onClick={addPrize} className="bg-gradient-wheel hover:bg-gradient-win">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Prize
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Hadiah
               </Button>
-            </CardContent>
+            </CardFooter>
           </Card>
 
-          {/* Current Prizes (Drag & Drop) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Current Prizes ({prizes.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {prizes.map((prize, idx) => (
-                  <div
-                    key={prize.id}
-                    className="p-4 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
-                    draggable
-                    onDragStart={() => handleDragStart(idx)}
-                    onDragOver={e => { e.preventDefault(); handleDragOver(idx); }}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <div className="flex items-center gap-4">
-                      <GripVertical className="w-5 h-5 text-muted-foreground cursor-grab flex-shrink-0" />
-                      
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div 
-                          className="w-6 h-6 rounded-full border-2 border-white flex-shrink-0"
-                          style={{ backgroundColor: prize.color }}
-                        />
-                        
-                        {/* Prize Image Display */}
-                        {prize.image && (
-                          <img 
-                            src={prize.image} 
-                            alt={prize.name} 
-                            className="w-12 h-12 object-cover rounded-lg border-2 border-white shadow-sm flex-shrink-0"
-                          />
-                        )}
-                        
-                        <div className="flex-1 min-w-0">
-                          {editingPrize === prize.id ? (
-                            <div className="space-y-2">
-                              <Input
-                                value={editForm.name}
-                                onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                                className="text-sm font-medium"
-                                placeholder="Prize name"
-                              />
-                              <div className="flex gap-2">
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  value={editForm.quota}
-                                  onChange={e => setEditForm({ ...editForm, quota: Number(e.target.value) })}
-                                  className="w-20 text-xs"
-                                  placeholder="Stock"
-                                />
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  value={editForm.winPercentage}
-                                  onChange={e => setEditForm({ ...editForm, winPercentage: Number(e.target.value) })}
-                                  className="w-16 text-xs"
-                                  placeholder="Win%"
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="font-medium text-foreground truncate">{prize.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                Won: {prize.won} / {prize.quota}
-                              </div>
-                              <div className="text-xs text-blue-500 font-medium">
-                                Win: {prize.winPercentage}%
-                              </div>
-                            </>
-                          )}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {prizes.length === 0 ? (
+              <Card className="sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-5">
+                <CardContent className="py-12 text-center text-muted-foreground">Belum ada hadiah terdaftar. Tambahkan hadiah baru di atas.</CardContent>
+              </Card>
+            ) : (
+              prizes.map((prize, index) => {
+                const remaining = Math.max(prize.quota - prize.won, 0);
+                const isLosingPrize = prize.name.toLowerCase().includes('coba lagi') || prize.name.toLowerCase().includes('belum beruntung');
+                return (
+                  <Card key={prize.id} className="flex h-full flex-col">
+                    <CardHeader className="flex flex-row items-center justify-between pb-4">
+                      <div>
+                        <CardTitle>Prize {index + 1}</CardTitle>
+                        <CardDescription>ID: {prize.id.slice(0, 8)}…</CardDescription>
+                      </div>
+                      <Badge variant={remaining > 0 ? 'default' : 'secondary'}>{remaining > 0 ? `${remaining} tersisa` : 'Habis'}</Badge>
+                    </CardHeader>
+                    <CardContent className="flex flex-1 flex-col space-y-5">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Nama Hadiah</Label>
+                          <Input value={prize.name} onChange={event => updatePrize(prize.id, { name: event.target.value })} placeholder="Masukkan nama hadiah" />
                         </div>
-                        
-                        <Badge variant={prize.won < prize.quota ? "default" : "secondary"} className="flex-shrink-0">
-                          {prize.won < prize.quota ? `${prize.quota - prize.won} left` : 'Sold Out'}
-                        </Badge>
-                      </div>
-                    
-                      {/* Controls */}
-                      <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
-                        {editingPrize === prize.id ? (
-                          // Edit Mode Controls
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              onClick={saveEditPrize}
-                              className="h-9 px-3 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700 transition-all duration-200"
-                              title="Save Changes"
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={cancelEditPrize}
-                              className="h-9 px-3 text-muted-foreground hover:text-foreground border-border hover:border-muted-foreground transition-all duration-200"
-                              title="Cancel Edit"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          // Normal Mode Controls
-                          <>
-                            {/* Win Percentage Control */}
-                            <div className="flex items-center gap-2">
-                              <Label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Win%:</Label>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={100}
-                                value={prize.winPercentage}
-                                onChange={e => updatePrizeWinPercentage(prize.id, Number(e.target.value))}
-                                className="w-16 h-9 text-sm text-center font-medium"
-                                title="Win Percentage (0-100)"
-                              />
-                            </div>
-                            
-                            {/* Stock Control */}
-                            <div className="flex items-center gap-2">
-                              <Label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Stock:</Label>
-                              <Input
-                                type="number"
-                                min={0}
-                                value={prize.quota}
-                                onChange={e => updatePrizeQuota(prize.id, Number(e.target.value))}
-                                className="w-16 h-9 text-sm text-center font-medium"
-                                title="Stock Quantity"
-                              />
-                            </div>
-                            
-                            {/* Image Upload/Edit Controls */}
-                            <div className="flex items-center gap-2">
-                              <div className="relative">
-                                <Input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={(e) => handleImageUpload(prize.id, e)}
-                                  className="w-0 h-0 opacity-0 absolute"
-                                  id={`image-upload-${prize.id}`}
+                        <div className="space-y-2">
+                          <Label>Persentase Menang (%)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={prize.winPercentage}
+                            onChange={event => updatePrize(prize.id, { winPercentage: Number(event.target.value) })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Stok Hadiah</Label>
+                          <Input type="number" min={0} value={prize.quota} onChange={event => updatePrize(prize.id, { quota: Math.max(0, Number(event.target.value)) })} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Warna Segmen</Label>
+                          <div className="flex items-center gap-3">
+                            <Input type="color" value={prize.color} onChange={event => updatePrize(prize.id, { color: event.target.value })} className="h-10 w-20 p-1" />
+                            <div className="flex flex-wrap gap-2">
+                              {COLOR_CHOICES.map(color => (
+                                <button
+                                  key={color}
+                                  type="button"
+                                  onClick={() => updatePrize(prize.id, { color })}
+                                  className={`h-7 w-7 rounded-full border ${color === prize.color ? 'ring-2 ring-offset-2 ring-primary border-primary' : 'border-muted-foreground/20'}`}
+                                  style={{ backgroundColor: color }}
+                                  aria-label={`Pilih warna ${color}`}
                                 />
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  asChild
-                                  className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-accent/50 border-border hover:border-accent transition-all duration-200"
-                                >
-                                  <Label 
-                                    htmlFor={`image-upload-${prize.id}`}
-                                    className="cursor-pointer flex items-center gap-2"
-                                    title="Upload/Change Image"
-                                  >
-                                    <ImageIcon className="w-4 h-4" />
-                                    <span className="text-xs font-medium">Image</span>
-                                  </Label>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Gambar Hadiah</Label>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <Input type="file" accept="image/*" onChange={event => handleImageUpload(prize.id, event)} className="max-w-xs" />
+                            {prize.image ? (
+                              <div className="flex items-center gap-3">
+                                <img src={prize.image} alt={prize.name} className="h-16 w-16 rounded-lg border object-cover" />
+                                <Button variant="outline" size="sm" onClick={() => updatePrize(prize.id, { image: undefined })}>
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Hapus Gambar
                                 </Button>
                               </div>
-                              
-                              {prize.image && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => removeImage(prize.id)}
-                                  className="h-9 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 hover:border-destructive/40 transition-all duration-200"
-                                  title="Remove Image"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </div>
-                            
-                            {/* Edit Button */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => startEditPrize(prize)}
-                              className="h-9 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 hover:border-blue-300 transition-all duration-200"
-                              title="Edit Prize"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </Button>
-                            
-                            {/* Delete Button */}
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={() => removePrize(prize.id)} 
-                              className="h-9 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 hover:border-destructive/40 transition-all duration-200"
-                              title="Delete Prize"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </>
-                        )}
+                            ) : (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <ImageIcon className="h-4 w-4" />
+                                Belum ada gambar diunggah.
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                      {isLosingPrize && (
+                        <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-700">
+                          Prize ini terdeteksi sebagai hadiah zonk. Pertimbangkan untuk menjaga persentasenya wajar agar pengalaman pemain tetap seru.
+                        </div>
+                      )}
+                    </CardContent>
+                    <CardFooter className="mt-auto flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+                      <div className="text-xs text-muted-foreground leading-tight">
+                        Pernah dimenangkan: <strong>{prize.won}</strong> kali.
+                      </div>
+                      <Button variant="destructive" size="sm" onClick={() => removePrize(prize.id)} className="w-full sm:w-auto">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Hapus Hadiah
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })
+            )}
+          </div>
 
-        {/* AUDIO TAB */}
-        <TabsContent value="audio">
-          <div className="space-y-6">
-            {/* Audio Upload Section */}
+          {prizes.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5" />
-                  Upload Audio Files
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Upload file audio baru untuk mengganti suara spin wheel
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Spin Sound Upload */}
-                <div className="space-y-2">
-                  <Label htmlFor="spin-audio" className="text-sm font-medium">
-                    Spin Sound (saat wheel berputar)
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      id="spin-audio"
-                      accept="audio/*"
-                      onChange={(e) => handleAudioUpload(e, 'spin')}
-                      className="flex-1"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => testAudio('spin')}
-                    >
-                      Test
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Format: MP3, WAV, OGG. Durasi: 1-3 detik
-                  </p>
-                </div>
-
-                {/* Win Sound Upload */}
-                <div className="space-y-2">
-                  <Label htmlFor="win-audio" className="text-sm font-medium">
-                    Win Sound (saat menang hadiah)
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      id="win-audio"
-                      accept="audio/*"
-                      onChange={(e) => handleAudioUpload(e, 'win')}
-                      className="flex-1"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => testAudio('win')}
-                    >
-                      Test
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Format: MP3, WAV, OGG. Durasi: 1-3 detik
-                  </p>
-                </div>
-
-                {/* BGM Upload */}
-                <div className="space-y-2">
-                  <Label htmlFor="bgm-audio" className="text-sm font-medium">
-                    Background Music
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      id="bgm-audio"
-                      accept="audio/*"
-                      onChange={(e) => handleAudioUpload(e, 'bgm')}
-                      className="flex-1"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => testAudio('bgm')}
-                    >
-                      Test
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Format: MP3, WAV, OGG. Durasi: 30 detik - 5 menit
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Audio Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
-                  Audio Settings
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Kelola pengaturan audio untuk spin wheel
-                </p>
+                <CardTitle>Ringkasan Hadiah</CardTitle>
+                <CardDescription>Daftar semua hadiah dalam format tabel seperti spreadsheet.</CardDescription>
               </CardHeader>
               <CardContent>
-                <AudioManager />
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>#</TableHead>
+                      <TableHead>Nama</TableHead>
+                      <TableHead>Persentase</TableHead>
+                      <TableHead>Stok</TableHead>
+                      <TableHead>Dimenangkan</TableHead>
+                      <TableHead>Sisa</TableHead>
+                      <TableHead>Gambar</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {prizes.map((prize, index) => {
+                      const remaining = Math.max(prize.quota - prize.won, 0);
+                      return (
+                        <TableRow key={prize.id}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell className="font-medium">{prize.name || <span className="text-muted-foreground italic">Belum diisi</span>}</TableCell>
+                          <TableCell>{prize.winPercentage}%</TableCell>
+                          <TableCell>{prize.quota}</TableCell>
+                          <TableCell>{prize.won}</TableCell>
+                          <TableCell>{remaining}</TableCell>
+                          <TableCell>
+                            {prize.image ? <img src={prize.image} alt={prize.name} className="h-10 w-10 rounded-md border object-cover" /> : <span className="text-muted-foreground">-</span>}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+                <TableCaption>Total hadiah tersimpan: {prizes.length}</TableCaption>
               </CardContent>
             </Card>
-          </div>
+          )}
         </TabsContent>
 
-        {/* STATISTICS TAB */}
-        <TabsContent value="statistics">
+        <TabsContent value="statistics" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Prize Distribution</CardTitle>
+              <CardTitle>Gambaran Statistik</CardTitle>
+              <CardDescription>Ringkas statistik per hadiah untuk evaluasi performa.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {prizes.map((prize) => (
-                  <div key={prize.id} className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>{prize.name}</span>
-                      <span>{prize.won} / {prize.quota}</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div 
-                        className="h-2 rounded-full transition-all duration-300"
-                        style={{ 
-                          width: `${(prize.won / prize.quota) * 100}%`,
-                          backgroundColor: prize.color
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
+              <div className="grid gap-4 md:grid-cols-2">
+                {prizes.map(prize => {
+                  const remaining = Math.max(prize.quota - prize.won, 0);
+                  const hitRate = totalSpins > 0 ? ((prize.won / totalSpins) * 100).toFixed(2) : '0.00';
+                  return (
+                    <Card key={`stats-${prize.id}`} className="border-dashed">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base font-semibold">{prize.name || 'Tanpa Nama'}</CardTitle>
+                        <CardDescription>Target {prize.winPercentage}% • Realisasi {hitRate}%</CardDescription>
+                      </CardHeader>
+                      <CardContent className="flex items-center justify-between">
+                        <div className="space-y-1 text-sm">
+                          <p>
+                            Dimenangkan <strong>{prize.won}</strong> kali
+                          </p>
+                          <p>
+                            Sisa stok <strong>{remaining}</strong>
+                          </p>
+                        </div>
+                        <div className="h-10 w-10 rounded-full border-4" style={{ borderColor: prize.color }} />
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </CardContent>
+            <CardFooter className="justify-end">
+              <Button variant="outline" onClick={resetStatistics}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Reset Statistik Menang
+              </Button>
+            </CardFooter>
           </Card>
-          <div className="text-center mt-4">
-            <Button 
-              variant="outline" 
-              onClick={resetStatistics}
-              className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
-            >
-              Reset All Statistics
-            </Button>
-          </div>
         </TabsContent>
 
-        {/* SETTINGS TAB - WHEEL CONFIGURATION */}
-        <TabsContent value="settings" className="space-y-6">
+        <TabsContent value="audio" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Wheel Configuration</CardTitle>
+              <CardTitle>Pengaturan Tampilan Roda</CardTitle>
+              <CardDescription>Sesuaikan perilaku dan tampilan roda hadiah.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Center Text */}
-              <div>
-                <Label htmlFor="centerText">Teks Tengah Roda</Label>
-                                 <Input
-                   id="centerText"
-                   value={wheelConfig.centerText}
-                   onChange={e => onWheelConfigUpdate({ ...wheelConfig, centerText: e.target.value })}
-                   className="max-w-xs"
-                 />
+            <CardContent className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="center-text">Tulisan Tengah</Label>
+                  <Input id="center-text" value={wheelConfig.centerText} onChange={event => updateWheelConfigValue('centerText', event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="default-color">Warna Default Segmen</Label>
+                  <Input id="default-color" type="color" value={wheelConfig.defaultColor} onChange={event => updateWheelConfigValue('defaultColor', event.target.value)} className="h-10 w-20 p-1" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Animasi Spin</Label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={wheelConfig.spinAnimation}
+                    onChange={event => updateWheelConfigValue('spinAnimation', event.target.value as WheelConfig['spinAnimation'])}
+                  >
+                    <option value="smooth">Smooth</option>
+                    <option value="bounce">Bounce</option>
+                    <option value="natural">Natural</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Ukuran Roda (px)</Label>
+                  <Slider
+                    value={[wheelConfig.wheelSize]}
+                    min={280}
+                    max={520}
+                    step={10}
+                    onValueChange={([value]) => updateWheelConfigValue('wheelSize', value)}
+                  />
+                  <div className="text-xs text-muted-foreground">Saat ini: {wheelConfig.wheelSize}px</div>
+                </div>
               </div>
-              {/* Spin Animation */}
-              <div>
-                <Label htmlFor="spinAnimation">Tipe Animasi Spin</Label>
-                <select
-                  id="spinAnimation"
-                  value={wheelConfig.spinAnimation}
-                  onChange={e => onWheelConfigUpdate({ ...wheelConfig, spinAnimation: e.target.value as 'smooth' | 'bounce' | 'natural' })}
-                  className="block mt-1 w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                >
-                  <option value="smooth" className="text-foreground bg-background">Smooth</option>
-                  <option value="bounce" className="text-foreground bg-background">Bounce</option>
-                  <option value="natural" className="text-foreground bg-background">Natural</option>
-                </select>
-              </div>
-              {/* Default Color */}
-              <div>
-                <Label htmlFor="defaultColor">Warna Default Segmen</Label>
-                <input
-                  id="defaultColor"
-                  type="color"
-                  value={wheelConfig.defaultColor}
-                  onChange={e => onWheelConfigUpdate({ ...wheelConfig, defaultColor: e.target.value })}
-                  className="block mt-1 w-12 h-10 border border-border rounded-md cursor-pointer bg-background hover:border-primary transition-colors"
-                  title="Pilih warna default"
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SwitchRow
+                  label="Tampilkan Label Hadiah"
+                  description="Matikan jika ingin menyembunyikan teks hadiah di roda."
+                  checked={wheelConfig.showLabels}
+                  onCheckedChange={value => updateWheelConfigValue('showLabels', value)}
+                />
+                <SwitchRow
+                  label="Tampilkan Gambar Hadiah"
+                  description="Jika dinyalakan, gambar pada kartu di atas akan muncul pada roda."
+                  checked={wheelConfig.showImages}
+                  onCheckedChange={value => updateWheelConfigValue('showImages', value)}
+                />
+                <SwitchRow
+                  label="Aktifkan Confetti"
+                  description="Confetti akan muncul ketika pemain memenangkan hadiah."
+                  checked={wheelConfig.showConfetti}
+                  onCheckedChange={value => updateWheelConfigValue('showConfetti', value)}
+                />
+                <SwitchRow
+                  label="Efek Getar"
+                  description="Guncang ringan saat roda mulai berputar."
+                  checked={wheelConfig.showShake}
+                  onCheckedChange={value => updateWheelConfigValue('showShake', value)}
+                />
+                <SwitchRow
+                  label="Glow Efek"
+                  description="Berikan efek glow ketika roda berhenti."
+                  checked={wheelConfig.showGlow}
+                  onCheckedChange={value => updateWheelConfigValue('showGlow', value)}
                 />
               </div>
-              {/* Show/Hide Labels */}
-              <div className="flex items-center gap-3">
-                                 <Switch
-                   checked={wheelConfig.showLabels}
-                   onCheckedChange={val => onWheelConfigUpdate({ ...wheelConfig, showLabels: val })}
-                   id="showLabels"
-                 />
-                <Label htmlFor="showLabels">Tampilkan Label Hadiah</Label>
-              </div>
-              {/* Show/Hide Images */}
-              <div className="flex items-center gap-3">
-                                 <Switch
-                   checked={wheelConfig.showImages}
-                   onCheckedChange={val => onWheelConfigUpdate({ ...wheelConfig, showImages: val })}
-                   id="showImages"
-                 />
-                <Label htmlFor="showImages">Tampilkan Gambar Hadiah</Label>
-              </div>
-              {/* Wheel Size */}
-              <div>
-                <Label htmlFor="wheelSize">Ukuran Roda (px)</Label>
-                                 <Slider
-                   id="wheelSize"
-                   min={200}
-                   max={600}
-                   step={10}
-                   value={[wheelConfig.wheelSize]}
-                   onValueChange={([val]) => onWheelConfigUpdate({ ...wheelConfig, wheelSize: val })}
-                   className="max-w-xs"
-                 />
-                <div className="text-xs text-muted-foreground mt-1">{wheelConfig.wheelSize}px</div>
-              </div>
-              {/* Dummy Segments */}
-              <div className="flex items-center gap-3">
-                <Button size="icon" variant="outline" onClick={removeDummySegment} disabled={wheelConfig.dummySegments === 0}>-</Button>
-                <span>Dummy/Zonk Segmen: {wheelConfig.dummySegments}</span>
-                <Button size="icon" variant="outline" onClick={addDummySegment}>+</Button>
-              </div>
-              {/* Visual Effects */}
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2">
-                                     <Switch
-                     checked={wheelConfig.showConfetti}
-                     onCheckedChange={val => onWheelConfigUpdate({ ...wheelConfig, showConfetti: val })}
-                     id="showConfetti"
-                   />
-                  <Label htmlFor="showConfetti" className="flex items-center gap-1"><Sparkles className="w-4 h-4" />Confetti</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                                     <Switch
-                     checked={wheelConfig.showShake}
-                     onCheckedChange={val => onWheelConfigUpdate({ ...wheelConfig, showShake: val })}
-                     id="showShake"
-                   />
-                  <Label htmlFor="showShake">Screen Shake</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                                     <Switch
-                     checked={wheelConfig.showGlow}
-                     onCheckedChange={val => onWheelConfigUpdate({ ...wheelConfig, showGlow: val })}
-                     id="showGlow"
-                   />
-                  <Label htmlFor="showGlow">Prize Glow</Label>
+
+              <div className="space-y-2">
+                <Label>Dummy Segment (zonk tambahan)</Label>
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" size="sm" onClick={() => updateWheelConfigValue('dummySegments', Math.max(0, wheelConfig.dummySegments - 1))}>
+                    -
+                  </Button>
+                  <div className="text-lg font-semibold">{wheelConfig.dummySegments}</div>
+                  <Button variant="outline" size="sm" onClick={() => updateWheelConfigValue('dummySegments', wheelConfig.dummySegments + 1)}>
+                    +
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Pengelolaan Audio</CardTitle>
+              <CardDescription>Atur musik latar dan efek suara spin melalui panel berikut.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AudioManager />
+            </CardContent>
+          </Card>
         </TabsContent>
-
-
       </Tabs>
     </div>
   );
 };
+
+interface SwitchRowProps {
+  label: string;
+  description?: string;
+  checked: boolean;
+  onCheckedChange: (value: boolean) => void;
+}
+
+const SwitchRow = ({ label, description, checked, onCheckedChange }: SwitchRowProps) => (
+  <div className="flex items-start justify-between rounded-lg border border-border/60 bg-card px-4 py-3">
+    <div>
+      <p className="font-medium leading-none">{label}</p>
+      {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
+    </div>
+    <Switch checked={checked} onCheckedChange={onCheckedChange} />
+  </div>
+);
