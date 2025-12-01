@@ -618,9 +618,9 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig, onActivePrizeChange
           disabled={isSpinning || availablePrizes.length === 0}
           className="absolute top-1/2 left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border-none outline-none focus-visible:ring-4 focus-visible:ring-[#f5c33f]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white transition-transform duration-200 ease-out hover:scale-[1.04] disabled:cursor-not-allowed disabled:hover:scale-100"
           style={{
-            width: `${Math.max(wheelSize * 0.26, 110)}px`,
-            height: `${Math.max(wheelSize * 0.26, 110)}px`,
-            backgroundImage: "url('/assets/WOF_Button.png')",
+            width: `${Math.max(wheelSize * 0.26, 90)}px`,
+            height: `${Math.max(wheelSize * 0.26, 90)}px`,
+            backgroundImage: "url('/assets/Button.png')",
             backgroundSize: 'contain',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
@@ -636,7 +636,7 @@ export const SpinWheel = ({ prizes, onPrizeWon, wheelConfig, onActivePrizeChange
           style={{ top: `-${Math.max(wheelSize * 0.1, 76)}px` }}
         >
           <img
-            src="/assets/WOF_Jarum.png"
+            src="/assets/pointer.png"
             alt="Penunjuk roda"
             className={`select-none transition-transform duration-300 -rotate-90 ${showBounce ? 'animate-bounce' : ''}`}
             style={{

@@ -162,7 +162,7 @@ const Index = () => {
   return (
     <div className="relative min-h-[100svh] overflow-hidden bg-[#f6f7fb] text-[#0f3a64]">
       <img
-        src="/assets/WOF_Background.png"
+        src="/assets/background.jpg"
         alt="Latar belakang Bank Mandiri Taspen"
         className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
       />
